@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+transformers
+sentence-transformers
+chromadb
+accelerate
+python-dotenv
+google-generativeai
+pandas
+langchain
+langchain-community
+langchain-text-splitters

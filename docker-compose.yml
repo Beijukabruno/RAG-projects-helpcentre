@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  postgres_helpcentre:
+    image: postgres:15
+    container_name: postgres_helpcentre
+    restart: always
+    environment:
+      POSTGRES_USER: helpcentre_user
+      POSTGRES_PASSWORD: helpcentre_pass
+      POSTGRES_DB: helpcentre_db
+    ports:
+      - "5432:5690"
+    volumes:
+      - postgres_helpcentre_data:/var/lib/postgresql/data
+    networks:
+      - proxy_hostinger-network
+
+  indexer:
+    image: tb-chatbot:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["/bin/sh", "-c", "python chunk_markdown.py && python embed_and_index.py"]
+    volumes:
+      - ./Vector_db:/app/Vector_db
+      - ./:/app
+    env_file:
+      - .env
+    deploy:
+      restart_policy:
+        condition: none
+    networks:
+      - proxy_hostinger-network
+
+  api:
+    image: tb-chatbot:latest
+    depends_on:
+      - indexer
+      - postgres_helpcentre
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./Vector_db:/app/Vector_db
+      - ./:/app
+    env_file:
+      - .env
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+    restart: unless-stopped
+    networks:
+      - proxy_hostinger-network
+
+volumes:
+  postgres_helpcentre_data:
+
+networks:
+  proxy_hostinger-network:
+    external: true
