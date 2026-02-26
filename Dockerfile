@@ -22,10 +22,10 @@ ENV PYTHONPATH="/app:$PYTHONPATH"
 
 # Copy app code
 COPY consolidated_chatbot.py ./
-COPY entrypoint.sh ./
+
 COPY guardrail.py ./
 COPY . .
-
+COPY entrypoint.sh ./
 RUN chmod +x ./entrypoint.sh
 
 EXPOSE 8000
