@@ -25,6 +25,8 @@ COPY consolidated_chatbot.py ./
 
 COPY guardrail.py ./
 COPY . .
+
+
 COPY entrypoint.sh ./
 RUN chmod +x ./entrypoint.sh
 

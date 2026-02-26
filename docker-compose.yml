@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres_helpcentre:
     image: postgres:15
@@ -21,8 +19,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    volumes:
-      - ./:/app
+    # volumes removed to prevent overwriting image code and entrypoint
     env_file:
       - .env
     deploy:
@@ -38,8 +35,7 @@ services:
       - postgres_helpcentre
     ports:
       - "8001:8000"
-    volumes:
-      - ./:/app
+    # volumes removed to prevent overwriting image code and entrypoint
     env_file:
       - .env
     restart: unless-stopped

@@ -1,5 +1,5 @@
 #!/bin/sh
-set -euo pipefail
+set -eu
 
 # Ensure PYTHONPATH includes the /app directory
 export PYTHONPATH="/app:$PYTHONPATH"
