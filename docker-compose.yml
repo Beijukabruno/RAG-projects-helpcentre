@@ -23,7 +23,6 @@ services:
       dockerfile: Dockerfile
     command: ["/bin/sh", "-c", "python chunk_markdown.py && python embed_and_index.py"]
     volumes:
-      - ./Vector_db:/app/Vector_db
       - ./:/app
     env_file:
       - .env
@@ -41,7 +40,6 @@ services:
     ports:
       - "8001:8000"
     volumes:
-      - ./Vector_db:/app/Vector_db
       - ./:/app
     env_file:
       - .env

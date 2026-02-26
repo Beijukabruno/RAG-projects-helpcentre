@@ -8,19 +8,15 @@ echo "[chatbot-service] Starting container..."
 
 cd /app || { echo "Failed to cd into /app"; exit 1; }
 
-if [ ! -d ./vector_db ] || [ -z "$(ls -A ./vector_db 2>/dev/null || true)" ]; then
-  echo "[chatbot-service] vector_db not found or empty — building index from knowledge_base (this may take a few minutes)..."
-
-  if [ -f ./scripts/chunk_markdown.py ] && [ -f ./scripts/embed_and_index.py ]; then
-    python scripts/chunk_markdown.py
-    python scripts/embed_and_index.py
-    echo "[chatbot-service]  Indexing complete — vector_db/ created."
-  else
-    echo "[chatbot-service]  Indexing scripts not found — cannot build vector_db. Exiting." >&2
-    exit 1
-  fi
+# Always build the vector_db inside the container (no host persistence)
+echo "[chatbot-service] (Re)building vector_db from knowledge_base (this may take a few minutes)..."
+if [ -f ./scripts/chunk_markdown.py ] && [ -f ./scripts/embed_and_index.py ]; then
+  python scripts/chunk_markdown.py
+  python scripts/embed_and_index.py
+  echo "[chatbot-service]  Indexing complete — vector_db/ created."
 else
-  echo "[chatbot-service] vector_db exists — skipping indexing."
+  echo "[chatbot-service]  Indexing scripts not found — cannot build vector_db. Exiting." >&2
+  exit 1
 fi
 
 echo "[chatbot-service] Running DB migrations (creating tables if needed) ..."
