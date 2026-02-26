@@ -21,7 +21,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["/bin/sh", "-c", "python chunk_markdown.py && python embed_and_index.py"]
     volumes:
       - ./:/app
     env_file:
@@ -43,7 +42,6 @@ services:
       - ./:/app
     env_file:
       - .env
-    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
     restart: unless-stopped
     networks:
       - proxy_hostinger-network
