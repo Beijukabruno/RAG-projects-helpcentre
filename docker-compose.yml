@@ -17,7 +17,7 @@ services:
       - proxy_hostinger-network
 
   indexer:
-    image: tb-chatbot:latest
+    image: beijuka/tb-chatbot:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -34,7 +34,7 @@ services:
       - proxy_hostinger-network
 
   api:
-    image: tb-chatbot:latest
+    image: beijuka/tb-chatbot:latest
     depends_on:
       - indexer
       - postgres_helpcentre
