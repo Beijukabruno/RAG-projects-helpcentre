@@ -49,7 +49,7 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
-          source: ".env,docker-compose.prod.yml"
+          source: ".env,docker-compose.yml"
           target: "${{ secrets.VM_APP_PATH }}"
 
       # Step 7: Deploy on remote server
@@ -62,9 +62,8 @@ jobs:
           script: |
             cd ${{ secrets.VM_APP_PATH }}
             docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" -p "${{ secrets.DOCKERHUB_TOKEN }}"
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml down
-            docker compose -f docker-compose.prod.yml up -d
-            docker compose -f docker-compose.prod.yml ps
+            docker compose -f docker-compose.yml pull
+            docker compose -f docker-compose.yml down
+            docker compose -f docker-compose.yml up -d
+            docker compose -f docker-compose.yml ps
 
-            
