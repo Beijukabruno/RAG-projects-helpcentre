@@ -314,7 +314,57 @@ def semantic_search_endpoint(req: SearchRequest) -> SearchResponse:
         matches.append(match)
 
     # Guardrail on output (concatenate all docs)
-    output_text = " ".join([m.markdown for m in matches])
+    output_text = " ".join([m.full_text for m in matches])
+    # --- Admin endpoint to fetch last n chat records and download as CSV ---
+    from fastapi.responses import StreamingResponse
+    import csv
+    import io
+
+    @app.get("/admin/last-records")
+    def get_last_records(n: int = 100):
+        db = SessionLocal()
+        records = db.query(ChatMessage).order_by(ChatMessage.created_at.desc()).limit(n).all()
+        # Return as JSON
+        return [
+            {
+                "id": str(r.id),
+                "session_id": str(r.session_id),
+                "is_user": r.is_user,
+                "message": r.message,
+                "llm_prompt": r.llm_prompt,
+                "llm_model": r.llm_model,
+                "llm_answer": r.llm_answer,
+                "sources": r.sources,
+                "toxicity_input": r.toxicity_input,
+                "toxicity_output": r.toxicity_output,
+                "created_at": r.created_at.isoformat() if r.created_at else None
+            }
+            for r in records
+        ]
+
+    @app.get("/admin/last-records-csv")
+    def get_last_records_csv(n: int = 100):
+        db = SessionLocal()
+        records = db.query(ChatMessage).order_by(ChatMessage.created_at.desc()).limit(n).all()
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["id", "session_id", "is_user", "message", "llm_prompt", "llm_model", "llm_answer", "sources", "toxicity_input", "toxicity_output", "created_at"])
+        for r in records:
+            writer.writerow([
+                str(r.id),
+                str(r.session_id),
+                r.is_user,
+                r.message,
+                r.llm_prompt,
+                r.llm_model,
+                r.llm_answer,
+                r.sources,
+                r.toxicity_input,
+                r.toxicity_output,
+                r.created_at.isoformat() if r.created_at else None
+            ])
+        output.seek(0)
+        return StreamingResponse(output, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=last_records.csv"})
     proceed_out, label_out, score_out, safe_resp_out = guard_output(output_text)
     if not proceed_out:
         return SearchResponse(
