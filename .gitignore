@@ -1,3 +1,5 @@
+# Ignore vector database
+Vector_db/
 # Python
 __pycache__/
 *.pyc
