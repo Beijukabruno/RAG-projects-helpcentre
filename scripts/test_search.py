@@ -40,7 +40,6 @@ def connect_chromadb():
         collection = client.get_or_create_collection(COLLECTION_NAME)
     return collection
 
-
 def run_query(model, collection, query_text, top_k=5):
     print(f"\nRunning query: \"{query_text}\" (top {top_k})")
     query_embedding = model.encode([query_text])
@@ -50,7 +49,7 @@ def run_query(model, collection, query_text, top_k=5):
         emb_list = query_embedding
 
     results = collection.query(
-        query_embeddings=emb_list,  # Remove the extra list brackets
+        query_embeddings=emb_list,
         n_results=top_k,
         include=["documents", "metadatas", "distances"],
     )
@@ -58,10 +57,12 @@ def run_query(model, collection, query_text, top_k=5):
     docs = results.get("documents", [[]])[0]
     metas = results.get("metadatas", [[]])[0]
     dists = results.get("distances", [[]])[0]
-
+    ids = results.get("ids", [[]])[0]
+    
     formatted = []
-    for doc, meta, dist in zip(docs, metas, dists):
+    for doc, meta, dist, cid in zip(docs, metas, dists, ids):
         formatted.append({
+            "doc_id": cid,
             "full_text": doc,
             "chunk_size": len(doc),
             "distance": round(dist, 4),
@@ -70,7 +71,6 @@ def run_query(model, collection, query_text, top_k=5):
             "source_url": meta.get("source_url", "")
         })
     return formatted
-
 
 def main():
     query_text = sys.argv[1] if len(sys.argv) > 1 else "How is TB spread?"
@@ -82,7 +82,6 @@ def main():
 
     print("\nResults:")
     print(json.dumps({"query": query_text, "results": results}, indent=2))
-
 
 if __name__ == '__main__':
     main()

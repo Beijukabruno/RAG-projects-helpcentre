@@ -119,6 +119,7 @@ class SearchRequest(BaseModel):
     k: int = Field(5, ge=1, le=20, description="Number of top results to return (default: 5).")
 
 class Match(BaseModel):
+    doc_id: str = Field("", description="Unique chunk/document ID from vector DB.")
     full_text: str = Field("", description="Full chunk content.")
     chunk_size: int = Field(0, description="Length of the chunk.")
     source_file: str = Field("", description="Filename where this chunk was found.")
@@ -302,9 +303,11 @@ def semantic_search_endpoint(req: SearchRequest) -> SearchResponse:
     documents = results.get("documents", [[]])[0]
     metadatas = results.get("metadatas", [[]])[0]
 
+    ids = results.get("ids", [[]])[0]
     matches = []
-    for doc, meta in zip(documents, metadatas):
+    for doc, meta, cid in zip(documents, metadatas, ids):
         match = Match(
+            doc_id=cid,
             full_text=doc,
             chunk_size=len(doc),
             source_file=meta.get("source_file", ""),
