@@ -22,14 +22,20 @@ ENV PYTHONPATH="/app:$PYTHONPATH"
 
 # Copy app code
 COPY consolidated_chatbot.py ./
-
 COPY guardrail.py ./
 COPY . .
 
+# Precompute chunks and vector DB during build
+RUN python scripts/chunk_markdown.py && python scripts/embed_and_index.py
 
 COPY entrypoint.sh ./
 RUN chmod +x ./entrypoint.sh
 
 EXPOSE 8000
+
+# Add healthcheck script
+COPY healthcheck.sh ./
+RUN chmod +x ./healthcheck.sh
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 CMD ./healthcheck.sh
 
 ENTRYPOINT ["./entrypoint.sh"]
