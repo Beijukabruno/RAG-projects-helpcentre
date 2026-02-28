@@ -6,7 +6,13 @@ pipe = pipeline('text-classification', model=model_path, tokenizer=model_path)
 SAFE_RESPONSE = "Sorry, I can't assist with that."
 
 def check_toxicity(text):
-    result = pipe(text)[0]
+    # Get max length from tokenizer
+    max_length = pipe.tokenizer.model_max_length if hasattr(pipe.tokenizer, 'model_max_length') else 512
+    # Tokenize and truncate if needed
+    inputs = pipe.tokenizer(text, truncation=True, max_length=max_length, return_tensors="pt")
+    # Decode back to string for pipeline
+    truncated_text = pipe.tokenizer.decode(inputs['input_ids'][0], skip_special_tokens=True)
+    result = pipe(truncated_text)[0]
     return result['label'], result['score']
 
 def guard_input(text):
