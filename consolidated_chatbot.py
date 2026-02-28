@@ -223,9 +223,11 @@ def chat(req: ChatRequest) -> ChatResponse:
             toxicity_output={"label": label_out, "score": score_out}
         )
 
+    ids = results.get("ids", [[]])[0]
     sources = []
-    for doc, meta in zip(docs, metas):
+    for doc, meta, cid in zip(docs, metas, ids):
         sources.append({
+            'doc_id': cid,
             'full_text': doc,
             'chunk_size': len(doc),
             'source_file': meta.get('source_file', ''),
