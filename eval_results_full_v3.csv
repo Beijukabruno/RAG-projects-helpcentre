@@ -1,0 +1,2 @@
+question,true_chunk_id,retrieved_chunk_ids,precision@5,recall@5,hit@5,mrr@5,ndcg@5,map@5,rouge1,rouge2,rougeL,bertscore_f1,latency_sec,status,timestamp
+"What is the current state of TB infection control among health workers, health care settings and congregate settings?",Final TB Infection Control Guidelines 2011.md_1,[],0,0,0,0,0,0,0,0,0,0,,failed,2026-03-02T20:31:35.874076

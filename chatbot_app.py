@@ -1,6 +1,8 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Any, List
+import os
 from chatbot_service import semantic_search
 from chatbot_service.call_gemma import call_gemma_model
 from chatbot_service.routes.semantic_search_api import router as chatbot_router
@@ -9,6 +11,19 @@ app = FastAPI(
     title="TB Help Centre - Chatbot Service",
     description="Chatbot API for interacting with the TB knowledge base.",
     version="1.0.0"
+)
+
+cors_allow_origins = os.getenv("CORS_ALLOW_ORIGINS", "*")
+allow_origins = [origin.strip() for origin in cors_allow_origins.split(",") if origin.strip()]
+if not allow_origins:
+    allow_origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allow_origins,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 class ChatRequest(BaseModel):

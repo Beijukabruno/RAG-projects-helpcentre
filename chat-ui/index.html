@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HelpCentre AI</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <main class="chat-card">
+      <header class="chat-header">
+        <div class="brand">
+          <div class="brand-badge">HC</div>
+          <div>
+            <h1>HelpCentre AI</h1>
+            <p>TB Health Assistant</p>
+          </div>
+        </div>
+        <span id="top-status" class="status-pill">API Unknown</span>
+      </header>
+
+      <section class="api-panel" aria-label="API connection settings">
+        <div class="api-panel-title">API Connection</div>
+        <div class="api-controls">
+          <input id="api-base-input" type="text" placeholder="https://helpcentre-dsi-mdr.emergentai.ug" />
+          <button id="apply-api-btn" type="button">Apply</button>
+          <button id="test-api-btn" type="button" class="ghost-btn">Test</button>
+        </div>
+        <div id="api-status" class="api-status status-unknown">Not tested yet.</div>
+      </section>
+
+      <section class="workspace">
+        <section class="chat-panel">
+          <section id="chat-box" class="chat-box" aria-live="polite">
+            <div class="message ai">
+              <div class="message-text">Hello. I can help answer questions about TB treatment, symptoms, and prevention.</div>
+              <div class="message-meta">Assistant</div>
+            </div>
+          </section>
+
+          <footer class="composer">
+            <input id="user-input" type="text" placeholder="Ask your TB question..." maxlength="1000" />
+            <button id="send-btn" type="button" aria-label="Send message">Send</button>
+          </footer>
+        </section>
+
+        <aside class="search-panel" aria-label="Semantic search">
+          <div class="search-header">
+            <h2>Semantic Search</h2>
+            <p>Find exact chunks from source documents.</p>
+          </div>
+          <div class="search-bar">
+            <input id="search-input" type="text" placeholder="Search source documents..." maxlength="1000" />
+            <button id="search-btn" type="button" aria-label="Run semantic search">Search</button>
+          </div>
+          <div id="search-results" class="search-results">
+            <div class="search-empty">Search results will appear here.</div>
+          </div>
+        </aside>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

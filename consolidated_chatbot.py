@@ -1,5 +1,6 @@
 from langchain_core.chat_history import InMemoryChatMessageHistory
 from fastapi import FastAPI, HTTPException, APIRouter
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, conint
 from typing import Any, List, Optional, Dict
 from sentence_transformers import SentenceTransformer
@@ -10,6 +11,7 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 from transformers import pipeline
 from guardrail import guard_input, guard_output
+from reranker import rerank_results
 import uuid
 
 from sqlalchemy import create_engine
@@ -28,6 +30,21 @@ app = FastAPI(
     title="TB Help Centre - Chatbot Service",
     description="Chatbot API for interacting with the TB knowledge base.",
     version="1.0.0"
+)
+
+# Allow browser clients (chat-ui) to call API routes from a different origin.
+# Configure with CORS_ALLOW_ORIGINS env var (comma-separated), defaulting to '*'.
+cors_allow_origins = os.getenv("CORS_ALLOW_ORIGINS", "*")
+allow_origins = [origin.strip() for origin in cors_allow_origins.split(",") if origin.strip()]
+if not allow_origins:
+    allow_origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allow_origins,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Simple global chat history for demonstration (single user/session)
@@ -56,13 +73,30 @@ persist_directory = str(BASE_DIR / "vector_db")
 client = chromadb.PersistentClient(path=persist_directory)
 collection = client.get_or_create_collection(name="DSI_TB")
 
+# Reranker configuration - enabled by default
+RERANKER_ENABLED = True
+RERETRIEVAL_K = 20  # Retrieve more candidates for reranking
+
 # Helper functions
 def search(query, k=5):
+    """
+    Search with optional reranking.
+    If reranking is enabled, retrieves more candidates (RERETRIEVAL_K) 
+    then reranks and returns top k.
+    """
+    # Retrieve more candidates if reranking is enabled
+    retrieve_k = RERETRIEVAL_K if RERANKER_ENABLED else k
+    
     embedding = model.encode(query)
     results = collection.query(
         query_embeddings=[embedding],
-        n_results=k
+        n_results=retrieve_k
     )
+    
+    # Apply reranking if enabled
+    if RERANKER_ENABLED:
+        results = rerank_results(query, results, top_n=k)
+    
     return results
 
 def call_gemma_model(prompt: str, model_name: str = 'gemma-3-4b-it') -> Dict:
