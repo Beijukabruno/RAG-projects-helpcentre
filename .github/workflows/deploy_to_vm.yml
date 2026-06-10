@@ -1,68 +1,90 @@
-name: Build, Push, and Deploy to VM
-
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    steps:
-      # Step 1: Checkout repository
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # Step 2: Set up Docker Buildx
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # Step 3: Log in to Docker Hub
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      # Step 4: Build and push Docker image
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          no-cache: true
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/tb-chatbot:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/tb-chatbot:${{ github.sha }}
-
-      # Step 5: Create .env file for deployment (if needed)
-      - name: Create .env file for deployment
-        run: |
-          echo "GEMMA_API_KEY=${{ secrets.GEMMA_API_KEY }}" > .env
-          # Add other environment variables as needed
-
-      # Step 6: Copy deployment files to VM
-      - name: Copy deployment files to VM
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          source: ".env,docker-compose.yml"
-          target: "${{ secrets.VM_APP_PATH }}"
-
-      # Step 7: Deploy on remote server
-      - name: Deploy on remote server
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          script: |
-            cd ${{ secrets.VM_APP_PATH }}
-            docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" -p "${{ secrets.DOCKERHUB_TOKEN }}"
-            docker compose -f docker-compose.yml pull
-            docker compose -f docker-compose.yml down
-            docker compose -f docker-compose.yml up -d
-            docker compose -f docker-compose.yml ps
+#name: Test, Build, Push, and Deploy to VM
+#
+#on:
+#  push:
+#    branches:
+#      - main
+#
+#jobs:
+#  test:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout repository
+#        uses: actions/checkout@v4
+#
+#      - name: Set up Python
+#        uses: actions/setup-python@v5
+#        with:
+#          python-version: "3.10"
+#
+#      - name: Install dependencies
+#        run: |
+#          python -m pip install --upgrade pip
+#          pip install -r requirements.txt
+#
+#      - name: Run tests
+#        run: python -m pytest tests
+#
+#  build-and-deploy:
+#    needs: test
+#    runs-on: ubuntu-latest
+#    steps:
+#      # Step 1: Checkout repository
+#      - name: Checkout repository
+#        uses: actions/checkout@v4
+#
+#      # Step 2: Set up Docker Buildx
+#      - name: Set up Docker Buildx
+#        uses: docker/setup-buildx-action@v3
+#
+#      # Step 3: Log in to Docker Hub
+#      - name: Log in to Docker Hub
+#        uses: docker/login-action@v3
+#        with:
+#          username: ${{ secrets.DOCKERHUB_USERNAME }}
+#          password: ${{ secrets.DOCKERHUB_TOKEN }}
+#
+#      # Step 4: Build and push Docker image
+#      - name: Build and push Docker image
+#        uses: docker/build-push-action@v6
+#        with:
+#          context: .
+#          file: ./deploy/docker/Dockerfile
+#          push: true
+#          no-cache: true
+#          tags: |
+#            ${{ secrets.DOCKERHUB_USERNAME }}/tb-chatbot:latest
+#            ${{ secrets.DOCKERHUB_USERNAME }}/tb-chatbot:${{ github.sha }}
+#
+#      # Step 5: Create .env file for deployment
+#      - name: Create .env file for deployment
+#        run: |
+#          echo "GEMMA_API_KEY=${{ secrets.GEMMA_API_KEY }}" > .env
+#          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
+#          echo "CORS_ALLOW_ORIGINS=${{ secrets.CORS_ALLOW_ORIGINS }}" >> .env
+#
+#      # Step 6: Copy deployment files to VM
+#      - name: Copy deployment files to VM
+#        uses: appleboy/scp-action@master
+#        with:
+#          host: ${{ secrets.VM_HOST }}
+#          username: ${{ secrets.VM_USER }}
+#          key: ${{ secrets.VM_SSH_KEY }}
+#          source: ".env,deploy/docker/docker-compose.yml"
+#          target: "${{ secrets.VM_APP_PATH }}"
+#
+#      # Step 7: Deploy on remote server
+#      - name: Deploy on remote server
+#        uses: appleboy/ssh-action@master
+#        with:
+#          host: ${{ secrets.VM_HOST }}
+#          username: ${{ secrets.VM_USER }}
+#          key: ${{ secrets.VM_SSH_KEY }}
+#          script: |
+#            cd ${{ secrets.VM_APP_PATH }}
+#            mkdir -p deploy/docker
+#            docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" -p "${{ secrets.DOCKERHUB_TOKEN }}"
+#            docker compose -f deploy/docker/docker-compose.yml pull
+#            docker compose -f deploy/docker/docker-compose.yml down
+#            docker compose -f deploy/docker/docker-compose.yml up -d
+#            docker compose -f deploy/docker/docker-compose.yml ps

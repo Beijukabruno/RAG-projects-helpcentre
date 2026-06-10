@@ -1,0 +1,35 @@
+services:
+  postgres_helpcentre:
+    image: pgvector/pgvector:pg15
+    container_name: postgres_helpcentre_local
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: helpcentre_user
+      POSTGRES_PASSWORD: helpcentre_pass
+      POSTGRES_DB: helpcentre_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_helpcentre_local_data:/var/lib/postgresql/data
+
+  api:
+    image: beijuka/tb-chatbot:latest
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    container_name: tb_chatbot_api_local
+    depends_on:
+      - postgres_helpcentre
+    env_file:
+      - ../../.env
+    environment:
+      # Inside the compose network the DB host is the service name, not 127.0.0.1.
+      # This overrides DATABASE_URL from .env (which targets the host for local uvicorn runs).
+      DATABASE_URL: postgresql://helpcentre_user:helpcentre_pass@postgres_helpcentre:5432/helpcentre_db
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+volumes:
+  postgres_helpcentre_local_data:
+

@@ -1,0 +1,53 @@
+python3 -m http.server 8080
+python3 -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+
+# Chunk markdown (per project)
+python3 scripts/chunk_markdown.py --project tb
+python3 scripts/chunk_markdown.py --project cervical_cancer
+
+# Embed & index (per project)
+python3 scripts/embed_and_index.py --project tb
+
+# New CLI for project management
+python3 scripts/project_manager_cli.py list
+python3 scripts/project_manager_cli.py enable cervical_cancer
+python3 scripts/project_manager_cli.py build-all
+
+
+python3 scripts/embed_and_index.py --project tb
+python3 scripts/embed_and_index.py --project cervical_cancer
+
+python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+
+latency issue 
+how do we get the fasted responses and enable this platform to opertae faster.
+
+first break it down and find the casues or possible points and then we see what we can do to best reolsve this 
+
+below are the logs from a few prompts 
+
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:36588 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36588 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36596 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44620 - "GET /ready HTTP/1.1" 200 OK
+2026-05-12 19:48:59,337 | INFO | app.core.guardrails | Loading toxicity guardrail model: Intel/toxic-prompt-roberta
+2026-05-12 19:49:00,046 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/Intel/toxic-prompt-roberta/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-05-12 19:49:00,106 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Intel/toxic-prompt-roberta/04da6fbf53eb28c7c7bbd36c3aed3724aa282fa0/config.json "HTTP/1.1 200 OK"
+Loading weights: 100%|██████| 201/201 [00:00<00:00, 676.39it/s, Materializing param=roberta.encoder.layer.11.output.dense.weight]
+2026-05-12 19:49:00,853 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/Intel/toxic-prompt-roberta/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+2026-05-12 19:49:01,270 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/Intel/toxic-prompt-roberta/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+Batches: 100%|█████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  2.09it/s]
+2026-05-12 19:49:05,568 | INFO | google_genai.models | AFC is enabled with max remote calls: 10.
+2026-05-12 19:49:31,779 | INFO | httpx | HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent "HTTP/1.1 200 OK"
+2026-05-12 19:49:32,037 | WARNING | app.db.session | Database session requested while DB is unavailable.
+2026-05-12 19:49:32,037 | WARNING | app.db.persistence | Skipping chat persistence because the database is unavailable.
+INFO:     127.0.0.1:45134 - "POST /tb/chat/general HTTP/1.1" 200 OK
+Batches: 100%|█████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00, 34.30it/s]
+2026-05-12 19:49:41,917 | INFO | google_genai.models | AFC is enabled with max remote calls: 10.
+2026-05-12 19:50:14,991 | INFO | httpx | HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent "HTTP/1.1 200 OK"
+2026-05-12 19:50:15,452 | WARNING | app.db.session | Database session requested while DB is unavailable.
+2026-05-12 19:50:15,452 | WARNING | app.db.persistence | Skipping chat persistence because the database is unavailable.
+INFO:     127.0.0.1:34502 - "POST /tb/chat/general HTTP/1.1" 200 OK

@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import chromadb
 from sentence_transformers import SentenceTransformer
-from reranker import rerank_results
+from app.retrieval.reranker import rerank_results
 
 # Setup
 BASE_DIR = Path(__file__).resolve().parents[1]

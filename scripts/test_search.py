@@ -19,7 +19,7 @@ import os
 
 # Import reranker
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from reranker import rerank_results
+from app.retrieval.reranker import rerank_results
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 VECTOR_DB_PATH = BASE_DIR / 'vector_db'

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <title>Emergent AI Helpcentre | Landing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-view="landing">
+  <main class="page-shell">
+    <div class="page-backdrop page-backdrop-left"></div>
+    <div class="page-backdrop page-backdrop-right"></div>
+
+    <main class="helpcentre-shell">
+      <header class="topbar">
+        <div class="brand-block">
+          <img class="brand-logo" src="../../emergentai.png" alt="Emergent AI" />
+        </div>
+
+        <div class="topbar-search" aria-label="Global search">
+          <span class="search-icon" aria-hidden="true">⌕</span>
+          <input id="search-input" type="text" placeholder="Search for questions, topics or keywords..." maxlength="1000" />
+          <button id="search-btn" type="button">Search</button>
+        </div>
+
+        <div class="topbar-actions" aria-label="Top actions">
+          <a class="ghost-action" href="results.html?q=How%20do%20I%20reset%20my%20password%3F"><span aria-hidden="true">◍</span> Results preview</a>
+          <button type="button" class="ghost-action"><span aria-hidden="true">◌</span> English</button>
+          <button type="button" class="ghost-action"><span aria-hidden="true">◉</span> Contact Support</button>
+        </div>
+      </header>
+
+      <section class="hero-panel">
+        <div class="hero-copy">
+          <h1>How can we help you today?</h1>
+          <p>Search and explore answers, guides and TB related information.</p>
+
+          <div class="popular-searches" aria-label="Popular searches">
+            <span class="popular-label">Popular searches:</span>
+            <div class="chip-row" id="popular-searches">
+              <button type="button" class="search-chip" data-query="Create account">Create account</button>
+              <button type="button" class="search-chip" data-query="Reset password">Reset password</button>
+              <button type="button" class="search-chip" data-query="Login">Login</button>
+              <button type="button" class="search-chip" data-query="Early signs of TB">Early signs of TB</button>
+              <button type="button" class="search-chip" data-query="Upload lab results">Upload lab results</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="content-grid">
+        <section class="left-column">
+          <section class="card-section">
+            <div class="section-heading">
+              <h3>Quick guides</h3>
+            </div>
+            <div class="quick-guides-grid" id="quick-guides"></div>
+          </section>
+
+          <section class="card-section">
+            <div class="section-heading faq-heading">
+              <h3>Frequently Asked Questions</h3>
+            </div>
+            <div id="faq-list" class="faq-list"></div>
+            <div class="faq-footer">
+              <button id="faq-view-btn" type="button" class="link-button">View all FAQs <span aria-hidden="true">→</span></button>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

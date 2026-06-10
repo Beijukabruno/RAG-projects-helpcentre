@@ -1,0 +1,590 @@
+To help a frontend engineer properly implement this interface, you want to break it down not just visually, but structurally, functionally, and hierarchically.
+The goal is to translate the UI mockup into:
+
+
+Layout architecture
+
+
+Reusable components
+
+
+Data flow
+
+
+Interaction behavior
+
+
+Responsive behavior
+
+
+Styling system
+
+
+API integration points
+
+
+Below is how I would professionally break this down for a frontend engineer or product designer.
+
+MDR Web Helpcentre — Frontend UI Breakdown
+1. Overall Product Purpose
+This is an AI-powered Helpcentre and Knowledge Retrieval interface for the MDR Web TB platform.
+Primary purpose:
+
+
+Allow users to search TB-related information
+
+
+Retrieve synthesised responses from a RAG-based chatbot
+
+
+Display referenced sources and extracted chunks
+
+
+Provide quick access to onboarding/help resources
+
+
+Surface contextual FAQs
+
+
+This is NOT a chat interface.
+This is a search-first knowledge exploration interface.
+
+2. High-Level Layout Structure
+The interface can be divided into 5 major sections:
+----------------------------------------------------HEADER / NAVBAR----------------------------------------------------HERO SEARCH SECTION----------------------------------------------------LEFT CONTENT AREA        | RIGHT RESPONSE PANEL                         |- Quick Guides           | - Synthesised LLM Answer- FAQs                   | - Referenced Sources                         | - Source Chunks                         | - Feedback Actions----------------------------------------------------
+The page uses a:
+
+
+2-column desktop layout
+
+
+Search-centric hierarchy
+
+
+Fixed-width content container
+
+
+Enterprise SaaS styling
+
+
+
+3. Design System Specifications
+Typography
+Font:
+
+
+Poppins (all text)
+
+
+Suggested hierarchy:
+
+
+H1 → 48px / 700
+
+
+H2 → 28px / 600
+
+
+H3 → 22px / 600
+
+
+Body → 16px / 400
+
+
+Small → 14px / 400
+
+
+
+Color Palette
+Primary:
+
+
+#244C89 → main brand blue
+
+
+Secondary:
+
+
+#1E3F73
+
+
+#F7F9FC
+
+
+#FFFFFF
+
+
+Borders:
+
+
+#E5EAF2
+
+
+Text:
+
+
+Primary → #111827
+
+
+Secondary → #4B5563
+
+
+Hover:
+
+
+Slight darkening of blue
+
+
+
+UI Style
+
+
+Rounded corners (12–18px)
+
+
+Minimal shadows
+
+
+Clean white cards
+
+
+Spacious padding
+
+
+Soft dividers
+
+
+Light enterprise aesthetic
+
+
+
+4. Component Breakdown
+A. Header/Navbar Component
+Purpose
+Top-level branding and navigation.
+Structure
+Left Side
+
+
+Emergent AI logo
+
+
+Title: “Helpcentre”
+
+
+Center
+
+
+Global search bar
+
+
+Right
+
+
+Language selector
+
+
+Contact support button/icon
+
+
+
+Technical Notes
+Component Tree
+<Header>    <Logo />    <Title />    <SearchBar />    <NavActions /></Header>
+
+Responsive Behavior
+Desktop:
+
+
+Horizontal layout
+
+
+Mobile:
+
+
+Collapse right-side actions
+
+
+Search becomes full width
+
+
+
+B. Hero Search Section
+Purpose
+Primary entry point for information retrieval.
+This is the MOST important area.
+
+Contents
+Left
+Headline:
+How can we help you today?
+Subtext:
+Search and explore answers, guides and TB related information.
+Below
+Popular search chips:
+
+
+Create account
+
+
+Reset password
+
+
+Login
+
+
+Early signs of TB
+
+
+Upload lab results
+
+
+
+Component Structure
+<SearchHero>    <Heading />    <Subheading />    <PopularSearchTags /></SearchHero>
+
+Important UX Notes
+
+
+Search field should remain sticky or highly visible
+
+
+Search interaction should feel instant
+
+
+Suggestions/autocomplete optional
+
+
+
+C. Quick Guides Section
+Purpose
+Provide onboarding and fast navigation resources.
+
+Cards
+Card 1
+Getting Started
+Card 2
+Demo Videos
+Card 3
+Platform Features
+
+Component Structure
+<QuickGuidesSection>    <GuideCard />    <GuideCard />    <GuideCard /></QuickGuidesSection>
+
+Card Design
+Each card contains:
+
+
+Icon
+
+
+Title
+
+
+Short description
+
+
+Arrow CTA
+
+
+
+Future Expandability
+Can later support:
+
+
+Video thumbnails
+
+
+Progress states
+
+
+Analytics tracking
+
+
+
+D. FAQ Section
+Purpose
+Provide common contextual questions.
+
+Suggested Questions
+Platform Questions
+
+
+How do I create an account on the MDR web platform?
+
+
+How do I reset my password?
+
+
+How do I log in?
+
+
+How do I upload lab results?
+
+
+How do I request technical support?
+
+
+TB Context Questions
+
+
+What are the early signs of tuberculosis?
+
+
+How is TB diagnosed?
+
+
+What tests are used for TB screening?
+
+
+What is GeneXpert?
+
+
+When should a chest X-ray be done?
+
+
+
+Component Structure
+<FAQSection>    <AccordionFAQ /></FAQSection>
+
+Accordion Behavior
+Click:
+
+
+Expand answer
+
+
+Collapse others optionally
+
+
+Optional:
+
+
+Preload top FAQs
+
+
+
+E. Response Panel (Core Feature)
+THIS is the most important component.
+
+Purpose
+Displays the RAG chatbot’s synthesised answer.
+This is NOT chat.
+This is answer retrieval + evidence grounding.
+
+Layout Sections
+<ResponsePanel>    <QueryTitle />    <SynthesisedAnswer />    <ReferencedSources />    <FeedbackActions /></ResponsePanel>
+
+F. Synthesised Answer Section
+Contents
+
+
+User query/title
+
+
+Step-by-step answer
+
+
+Structured paragraphs
+
+
+Lists where needed
+
+
+
+Important UX
+The answer should feel:
+
+
+trustworthy
+
+
+grounded
+
+
+medically safe
+
+
+readable
+
+
+Avoid:
+
+
+chatbot bubbles
+
+
+conversational clutter
+
+
+
+G. Sources Section
+VERY IMPORTANT
+This establishes trust and explainability.
+Each source card should contain:
+Source Metadata
+
+
+Document title
+
+
+Document type
+
+
+URL
+
+
+Section/chapter
+
+
+Chunk Preview
+A short extracted text chunk:
+Example:
+“To reset your password, click on the Forgot Password link on the login page…”
+
+Component Structure
+<SourcesList>    <SourceCard>        <Metadata />        <ChunkPreview />    </SourceCard></SourcesList>
+
+H. Feedback Component
+Purpose
+Collect retrieval quality feedback.
+
+Features
+Binary
+
+
+👍 Helpful
+
+
+👎 Not helpful
+
+
+Quantitative
+5-star rating
+
+Future Optional
+
+
+“Report incorrect answer”
+
+
+“Suggest improvement”
+
+
+
+5. Backend/API Expectations
+The frontend engineer should anticipate these APIs.
+
+Search Endpoint
+POST /api/search
+Input:
+{  "query": "How do I reset my password?"}
+
+Expected Response
+{  "answer": "...",  "sources": [    {      "title": "...",      "chunk": "...",      "url": "...",      "section": "2.1"    }  ]}
+
+FAQ Endpoint
+GET /api/faqs
+
+Quick Guides Endpoint
+GET /api/guides
+
+Feedback Endpoint
+POST /api/feedback
+
+6. Suggested Frontend Stack
+Recommended
+Framework
+
+
+React / Next.js
+
+
+Styling
+
+
+TailwindCSS
+
+
+State Management
+
+
+Zustand or React Context
+
+
+API Handling
+
+
+React Query / TanStack Query
+
+
+Icons
+
+
+Lucide Icons
+
+
+Animations
+
+
+Framer Motion (minimal)
+
+
+
+7. Suggested Folder Structure
+/components    /layout    /search    /faq    /guides    /response    /sources    /feedback/pages    helpcentre.tsx/services    api.ts/types    search.ts
+
+8. Key UX Priorities
+The frontend engineer should prioritize:
+1. Search visibility
+Search is the core interaction.
+
+2. Trustworthy answers
+Clear references + chunks.
+
+3. Low cognitive load
+Avoid clutter.
+
+4. Accessibility
+Readable spacing and contrast.
+
+5. Performance
+Search results should feel fast.
+
+9. Important Product Philosophy
+This interface should feel like:
+Google Search+Microsoft Help Center+Perplexity AI+Clinical Knowledge Base
+NOT:
+
+
+WhatsApp chat
+
+
+ChatGPT conversation UI
+
+
+Discord-style chat interface
+
+
+The emphasis is:
+
+
+retrieval
+
+
+synthesis
+
+
+references
+
+
+structured help
+
+
+explainability
+
+
+discoverability
+
+
+That distinction is extremely important for the frontend engineer to understand.
