@@ -208,3 +208,4 @@ The API was improved to degrade gracefully when Postgres is unavailable, so the 
 On the user experience side, the interface was redesigned into a search-first AI experience that presents a cleaner AI overview and supporting sources without exposing low-level system details. The answer flow is grounded by retrieval, while the source panel keeps the evidence visible and easier to trust.
 
 Overall, the work improved maintainability, deployment readiness, resilience, retrieval quality, and user-facing clarity.
+# RAG-projects-helpcentre
