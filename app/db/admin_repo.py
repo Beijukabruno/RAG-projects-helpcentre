@@ -9,9 +9,15 @@ import datetime
 import logging
 import uuid as uuid_lib
 
-from app.core.config import ROLE_PROJECT_ADMIN, ROLE_SUPER_ADMIN
+from app.core.config import (
+    BOOTSTRAP_SUPER_ADMIN_EMAIL,
+    BOOTSTRAP_SUPER_ADMIN_PASSWORD,
+    ROLE_PROJECT_ADMIN,
+    ROLE_SUPER_ADMIN,
+)
 from app.db.models import (
     Project,
+    ProjectAudience,
     ProjectMembership,
     Role,
     User,
@@ -55,11 +61,14 @@ def _project_dict(p: Project) -> dict:
         "name": p.name,
         "description": p.description,
         "domain_url": p.domain_url,
+        "domain_owner": p.domain_owner,
+        "contact_email": p.contact_email,
         "enabled": p.enabled,
         "status": p.status,
         "config_json": p.config_json,
         "created_at": p.created_at.isoformat() if p.created_at else None,
         "updated_at": p.updated_at.isoformat() if p.updated_at else None,
+        "audiences": [a.audience for a in p.audiences] if hasattr(p, "audiences") else [],
     }
 
 
@@ -212,7 +221,9 @@ def get_project(project_id: str) -> dict | None:
 
 def create_project(
     *, project_id: str, name: str, description: str | None = None,
-    domain_url: str | None = None, config_json: dict | None = None,
+    domain_url: str | None = None, domain_owner: str | None = None,
+    contact_email: str | None = None, audiences: list[str] | None = None,
+    config_json: dict | None = None,
 ) -> dict:
     with db_session_context() as db:
         _require(db)
@@ -220,17 +231,23 @@ def create_project(
             raise ValueError(f"Project {project_id} already exists.")
         p = Project(
             id=project_id, name=name, description=description,
-            domain_url=domain_url, config_json=config_json,
+            domain_url=domain_url, domain_owner=domain_owner,
+            contact_email=contact_email, config_json=config_json,
             enabled=True, status="active",
         )
         db.add(p)
+        
+        # Add audiences
+        for aud in (audiences or ["general", "clinicians"]):
+            db.add(ProjectAudience(project_id=project_id, audience=aud))
+            
         db.commit()
         db.refresh(p)
         return _project_dict(p)
 
 
 def update_project(project_id: str, **fields) -> dict | None:
-    allowed = {"name", "description", "domain_url", "enabled", "status", "config_json"}
+    allowed = {"name", "description", "domain_url", "domain_owner", "contact_email", "enabled", "status", "config_json"}
     with db_session_context() as db:
         _require(db)
         p = db.query(Project).filter(Project.id == project_id).first()
@@ -319,6 +336,235 @@ def remove_project_membership(project_id: str, user_id) -> bool:
 
 
 # --------------------------------------------------------------------------- #
+# Ingestion Jobs
+# --------------------------------------------------------------------------- #
+
+def create_ingestion_job(
+    *, project_id: str, audience: str | None = None, job_type: str, payload: dict | None = None
+) -> str:
+    from app.db.models import IngestionJob
+    with db_session_context() as db:
+        _require(db)
+        job = IngestionJob(
+            project_id=project_id,
+            audience=audience,
+            job_type=job_type,
+            status="queued",
+            payload=payload,
+        )
+        db.add(job)
+        db.commit()
+        db.refresh(job)
+        return str(job.id)
+
+
+def update_ingestion_job(job_id: str, status: str, error_message: str | None = None, finished: bool = False) -> None:
+    from app.db.models import IngestionJob
+    with db_session_context() as db:
+        _require(db)
+        job = db.query(IngestionJob).filter(IngestionJob.id == job_id).first()
+        if not job:
+            return
+        job.status = status
+        if error_message:
+            job.error_message = error_message
+        if status == "processing" and not job.started_at:
+            job.started_at = datetime.datetime.utcnow()
+        if finished:
+            job.finished_at = datetime.datetime.utcnow()
+        db.commit()
+
+
+# --------------------------------------------------------------------------- #
+# Index Runs
+# --------------------------------------------------------------------------- #
+
+def create_index_run(*, project_id: str, audience: str, embedding_model: str) -> str:
+    from app.db.models import IndexRun
+    with db_session_context() as db:
+        _require(db)
+        run = IndexRun(
+            project_id=project_id,
+            audience=audience,
+            embedding_model=embedding_model,
+            status="queued",
+        )
+        db.add(run)
+        db.commit()
+        db.refresh(run)
+        return str(run.id)
+
+
+def update_index_run(run_id: str, status: str, chunk_count: int = 0, error_message: str | None = None, finished: bool = False) -> None:
+    from app.db.models import IndexRun
+    with db_session_context() as db:
+        _require(db)
+        run = db.query(IndexRun).filter(IndexRun.id == run_id).first()
+        if not run:
+            return
+        run.status = status
+        if chunk_count:
+            run.chunk_count = chunk_count
+        if error_message:
+            run.error_message = error_message
+        if status == "processing" and not run.started_at:
+            run.started_at = datetime.datetime.utcnow()
+        if finished:
+            run.finished_at = datetime.datetime.utcnow()
+        db.commit()
+
+
+def list_source_assets(project_id: str, audience: str) -> list[dict]:
+    from app.db.models import SourceAsset
+    with db_session_context() as db:
+        _require(db)
+        assets = (
+            db.query(SourceAsset)
+            .filter(SourceAsset.project_id == project_id, SourceAsset.audience == audience)
+            .order_by(SourceAsset.created_at.desc())
+            .all()
+        )
+        return [
+            {
+                "id": str(a.id),
+                "source_name": a.source_name,
+                "source_url": a.source_url,
+                "source_file": a.source_file,
+                "status": a.status,
+                "created_at": a.created_at.isoformat() if a.created_at else None,
+            }
+            for a in assets
+        ]
+
+
+# --------------------------------------------------------------------------- #
+# Overview & Monitoring
+# --------------------------------------------------------------------------- #
+
+def get_platform_overview() -> dict:
+    """Return high-level platform stats for Super Admins."""
+    from app.db.models import AuditLog, ChatMessage, Project, User
+    from sqlalchemy import func, cast, Date
+    import datetime
+    
+    with db_session_context() as db:
+        _require(db)
+        
+        # Activity data (last 14 days)
+        fourteen_days_ago = datetime.datetime.utcnow() - datetime.timedelta(days=14)
+        activity = db.query(
+            cast(ChatMessage.created_at, Date).label("date"),
+            func.count(ChatMessage.id).label("count")
+        ).filter(
+            ChatMessage.is_user == True,
+            ChatMessage.created_at >= fourteen_days_ago
+        ).group_by(cast(ChatMessage.created_at, Date)).order_by("date").all()
+        
+        # Toxicity stats
+        toxic_count = db.query(ChatMessage).filter(
+            ChatMessage.is_user == True,
+            ChatMessage.toxicity_output != None,
+            ChatMessage.toxicity_output['toxic'].astext == "true"
+        ).count()
+        
+        # System health (simplified)
+        from app.db.session import get_database_status
+        health = {
+            "database": get_database_status(),
+            "last_audit": db.query(AuditLog).order_by(AuditLog.created_at.desc()).first().created_at.isoformat() if db.query(AuditLog).count() > 0 else None
+        }
+        
+        total_msg = db.query(ChatMessage).filter(ChatMessage.is_user == True).count()
+
+        return {
+            "total_projects": db.query(Project).count(),
+            "total_users": db.query(User).count(),
+            "total_messages": total_msg,
+            "toxic_messages": toxic_count,
+            "system_health": health,
+            "activity_data": [{"date": str(a.date), "count": a.count} for a in activity],
+            "recent_audit_logs": list_audit_logs(limit=5),
+        }
+
+
+def get_project_overview(project_id: str) -> dict:
+    """Return high-level stats for a specific project."""
+    from app.db.models import ChatFeedback, ChatMessage, IngestionJob, SourceAsset
+    from sqlalchemy import func, cast, Date
+    import datetime
+    
+    with db_session_context() as db:
+        _require(db)
+        # Verify project exists
+        p = db.query(Project).filter(Project.id == project_id).first()
+        if not p:
+            raise ValueError(f"Project {project_id} not found.")
+
+        # Message count (user only)
+        msg_count = db.query(ChatMessage).filter(
+            ChatMessage.project_id == project_id,
+            ChatMessage.is_user == True
+        ).count()
+
+        # Average rating
+        avg_rating = db.query(func.avg(ChatFeedback.rating)).filter(
+            ChatFeedback.project_id == project_id
+        ).scalar()
+
+        # Active jobs
+        active_jobs = db.query(IngestionJob).filter(
+            IngestionJob.project_id == project_id,
+            IngestionJob.status.in_(["queued", "processing"])
+        ).count()
+
+        # Activity data (last 14 days)
+        fourteen_days_ago = datetime.datetime.utcnow() - datetime.timedelta(days=14)
+        activity = db.query(
+            cast(ChatMessage.created_at, Date).label("date"),
+            func.count(ChatMessage.id).label("count")
+        ).filter(
+            ChatMessage.project_id == project_id,
+            ChatMessage.is_user == True,
+            ChatMessage.created_at >= fourteen_days_ago
+        ).group_by(cast(ChatMessage.created_at, Date)).order_by("date").all()
+
+        return {
+            "project_id": project_id,
+            "project_name": p.name,
+            "total_user_messages": msg_count,
+            "average_rating": float(avg_rating) if avg_rating else 0.0,
+            "total_sources": db.query(SourceAsset).filter(SourceAsset.project_id == project_id).count(),
+            "active_ingestion_jobs": active_jobs,
+            "activity_data": [{"date": str(a.date), "count": a.count} for a in activity],
+            "recent_audit_logs": list_audit_logs(project_id=project_id, limit=5),
+        }
+
+
+def list_audit_logs(project_id: str | None = None, limit: int = 50) -> list[dict]:
+    from app.db.models import AuditLog, User
+    with db_session_context() as db:
+        _require(db)
+        query = db.query(AuditLog, User.email).outerjoin(User, User.id == AuditLog.actor_user_id)
+        if project_id:
+            query = query.filter(AuditLog.project_id == project_id)
+        
+        logs = query.order_by(AuditLog.created_at.desc()).limit(limit).all()
+        return [
+            {
+                "id": str(log.id),
+                "actor_email": email or "system",
+                "action": log.action,
+                "entity_type": log.entity_type,
+                "entity_id": log.entity_id,
+                "project_id": log.project_id,
+                "payload": log.payload,
+                "created_at": log.created_at.isoformat() if log.created_at else None,
+            }
+            for log, email in logs
+        ]
+
+
+# --------------------------------------------------------------------------- #
 # Audit log
 # --------------------------------------------------------------------------- #
 
@@ -363,3 +609,27 @@ def _coerce_uuid(value) -> uuid_lib.UUID:
     if isinstance(value, uuid_lib.UUID):
         return value
     return uuid_lib.UUID(str(value))
+
+
+def bootstrap_admin_defaults() -> None:
+    """Ensure expected roles exist and optionally create the initial super admin."""
+    ensure_role(ROLE_SUPER_ADMIN, "Full platform administrator.")
+    ensure_role(ROLE_PROJECT_ADMIN, "Project-scoped knowledge-base administrator.")
+
+    if not BOOTSTRAP_SUPER_ADMIN_EMAIL or not BOOTSTRAP_SUPER_ADMIN_PASSWORD:
+        return
+
+    from app.core.auth import hash_password
+
+    email = BOOTSTRAP_SUPER_ADMIN_EMAIL.lower().strip()
+    user = get_user_by_email(email)
+    if user:
+        assign_global_role(user.id, ROLE_SUPER_ADMIN)
+        return
+
+    created = create_user(
+        email=email,
+        full_name="Bootstrap Super Admin",
+        password_hash=hash_password(BOOTSTRAP_SUPER_ADMIN_PASSWORD),
+    )
+    assign_global_role(_coerce_uuid(created["id"]), ROLE_SUPER_ADMIN)

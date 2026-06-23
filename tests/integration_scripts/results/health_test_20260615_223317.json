@@ -1,0 +1,31 @@
+{
+  "health": {
+    "status": "ok"
+  },
+  "ready": {
+    "ready": true,
+    "mode": "chatbot",
+    "database": {
+      "available": true,
+      "reason": null
+    },
+    "search": {
+      "vector_backend": "postgres",
+      "embedding_model": "models/gemini-embedding-2",
+      "projects": {
+        "tb": {
+          "general": "TB_GENERAL",
+          "clinicians": "TB_CLINICIANS"
+        },
+        "cervical_cancer": {
+          "general": "CERVICAL_GENERAL",
+          "clinicians": "CERVICAL_CLINICIANS"
+        },
+        "maternal_health": {
+          "general": "MATERNAL_GENERAL",
+          "clinicians": "MATERNAL_CLINICIANS"
+        }
+      }
+    }
+  }
+}

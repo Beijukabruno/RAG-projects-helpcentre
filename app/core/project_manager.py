@@ -1,26 +1,87 @@
 import yaml
+import json
+import logging
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
+
+logger = logging.getLogger(__name__)
+
 
 class ProjectManager:
     def __init__(self, config_file: str = "config/projects.yaml"):
         self.config_file = Path(config_file)
-        self.projects = self._load_projects()
+        self.projects = self._load_projects_from_yaml()
+        self._db_projects_cache = {}
 
-    def _load_projects(self) -> Dict:
+    def _load_projects_from_yaml(self) -> Dict:
         if not self.config_file.exists():
-            raise FileNotFoundError(f"Projects config not found: {self.config_file}")
-        with self.config_file.open("r", encoding="utf-8") as fh:
-            data = yaml.safe_load(fh)
-        return data.get("projects", {})
+            logger.warning(f"Projects config YAML not found: {self.config_file}")
+            return {}
+        try:
+            with self.config_file.open("r", encoding="utf-8") as fh:
+                data = yaml.safe_load(fh)
+            return data.get("projects", {})
+        except Exception as e:
+            logger.error(f"Failed to load projects from YAML: {e}")
+            return {}
+
+    def refresh_from_db(self) -> None:
+        """Fetch all projects from the database and cache them."""
+        from app.db.session import db_session_context, is_database_available
+        if not is_database_available():
+            return
+
+        try:
+            from app.db.models import Project
+            with db_session_context() as db:
+                if db:
+                    projects = db.query(Project).all()
+                    self._db_projects_cache = {
+                        p.id: (p.config_json if isinstance(p.config_json, dict) else json.loads(p.config_json))
+                        for p in projects if p.config_json
+                    }
+                    logger.info(f"Loaded {len(self._db_projects_cache)} projects from database.")
+        except Exception as e:
+            logger.error(f"Failed to refresh projects from DB: {e}")
 
     def get_project(self, project_id: str) -> Dict:
-        if project_id not in self.projects:
-            raise KeyError(f"Project {project_id} not found")
-        return self.projects[project_id]
+        # 1. Try DB cache first (Source of Truth)
+        if project_id in self._db_projects_cache:
+            return self._db_projects_cache[project_id]
+
+        # 2. Try fetching from DB if not in cache
+        from app.db.session import db_session_context, is_database_available
+        if is_database_available():
+            try:
+                from app.db.models import Project
+                with db_session_context() as db:
+                    if db:
+                        p = db.query(Project).filter(Project.id == project_id).first()
+                        if p and p.config_json:
+                            cfg = p.config_json if isinstance(p.config_json, dict) else json.loads(p.config_json)
+                            self._db_projects_cache[project_id] = cfg
+                            return cfg
+            except Exception as e:
+                logger.error(f"Error fetching project {project_id} from DB: {e}")
+
+        # 3. Fallback to YAML (useful for initial bootstrap or if DB is down)
+        if project_id in self.projects:
+            return self.projects[project_id]
+
+        raise KeyError(f"Project {project_id} not found")
 
     def get_active_projects(self) -> List[str]:
-        return [pid for pid, cfg in self.projects.items() if cfg.get("enabled", False)]
+        # Combine YAML and DB project IDs, prioritizing DB enabled status
+        all_ids = set(self.projects.keys()) | set(self._db_projects_cache.keys())
+        active = []
+        for pid in all_ids:
+            try:
+                cfg = self.get_project(pid)
+                if cfg.get("enabled", False):
+                    active.append(pid)
+            except KeyError:
+                continue
+        return active
 
     def get_audiences(self, project_id: str) -> List[str]:
         return self.get_project(project_id).get("audiences", [])
@@ -55,6 +116,7 @@ class ProjectManager:
         if not base:
             raise KeyError(f"knowledge_base.base_path not set for project {project_id}")
         return Path(base)
+
 
 # Singleton
 project_manager = ProjectManager()

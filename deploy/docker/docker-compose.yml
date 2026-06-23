@@ -1,42 +1,66 @@
 services:
-  postgres_helpcentre:
+  helpcentre_postgres:
     image: pgvector/pgvector:pg15
-    container_name: postgres_helpcentre
-    restart: always
+    container_name: helpcentre_postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: helpcentre_user
-      POSTGRES_PASSWORD: helpcentre_pass
-      POSTGRES_DB: helpcentre_db
+      POSTGRES_USER: ${POSTGRES_USER:-helpcentre_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-helpcentre_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-helpcentre_db}
     ports:
-      - "5432:5690"
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
       - postgres_helpcentre_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
     networks:
       - proxy_hostinger-network
 
-  indexer:
-    image: beijuka/tb-chatbot:latest
-    build:
-      context: ../..
-      dockerfile: deploy/docker/Dockerfile
-    # volumes removed to prevent overwriting image code and entrypoint
-    env_file:
-      - .env
-    deploy:
-      restart_policy:
-        condition: none
-    networks:
-      - proxy_hostinger-network
-
-  api:
-    image: beijuka/tb-chatbot:latest
+  helpcentre_indexer:
+    image: ${HELPCENTRE_IMAGE:-beijuka/helpcentre-api:latest}
+    container_name: helpcentre_indexer
+    command: ["index"]
     depends_on:
-      - indexer
-    ports:
-      - "8001:8000"
-    # volumes removed to prevent overwriting image code and entrypoint
+      helpcentre_postgres:
+        condition: service_healthy
     env_file:
-      - .env
+      - ../../.env
+    environment:
+      APP_NAME: helpcentre-indexer
+      DATABASE_URL: postgresql://${POSTGRES_USER:-helpcentre_user}:${POSTGRES_PASSWORD:-helpcentre_pass}@helpcentre_postgres:5432/${POSTGRES_DB:-helpcentre_db}
+      INDEX_PROJECTS: ${INDEX_PROJECTS:-tb,cervical_cancer}
+      CHUNKING_STRATEGY: ${CHUNKING_STRATEGY:-semantic}
+    profiles:
+      - bootstrap
+    restart: "no"
+    networks:
+      - proxy_hostinger-network
+
+  helpcentre_api:
+    image: ${HELPCENTRE_IMAGE:-beijuka/helpcentre-api:latest}
+    container_name: helpcentre_api
+    depends_on:
+      helpcentre_postgres:
+        condition: service_healthy
+    ports:
+      - "${HELPCENTRE_API_HOST_PORT:-8080}:8000"
+    env_file:
+      - ../../.env
+    environment:
+      APP_NAME: helpcentre-api
+      DATABASE_URL: postgresql://${POSTGRES_USER:-helpcentre_user}:${POSTGRES_PASSWORD:-helpcentre_pass}@helpcentre_postgres:5432/${POSTGRES_DB:-helpcentre_db}
+      INDEX_PROJECTS: ${INDEX_PROJECTS:-tb,cervical_cancer}
+      BOOTSTRAP_INDEX_ON_START: ${BOOTSTRAP_INDEX_ON_START:-0}
+    healthcheck:
+      test: ["CMD", "./deploy/scripts/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     restart: unless-stopped
     networks:
       - proxy_hostinger-network

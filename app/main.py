@@ -13,6 +13,7 @@ from app.db.session import initialize_database
 from app.retrieval.semantic_search import initialize_search_backends
 from app.core.guardrails import initialize_guardrails
 from app.core.llm import initialize_genai_client
+from app.db.admin_repo import bootstrap_admin_defaults, DatabaseUnavailable
 
 
 load_dotenv()
@@ -28,7 +29,11 @@ OPENAPI_TAGS = [
     {"name": "TB", "description": "TB chatbot, semantic search, and feedback endpoints."},
     {"name": "Cervical Cancer", "description": "Cervical cancer chatbot, semantic search, and feedback endpoints."},
     {"name": "Maternal Health", "description": "Maternal health chatbot, semantic search, and feedback endpoints."},
-    {"name": "Admin", "description": "Operational database and diagnostics endpoints."},
+    {"name": "Admin: Auth", "description": "Authentication and user identity endpoints."},
+    {"name": "Admin: Users", "description": "User management, roles, and activation."},
+    {"name": "Admin: Projects", "description": "Project lifecycle and membership management."},
+    {"name": "Admin: Knowledge Base", "description": "Knowledge source ingestion, activation, and management."},
+    {"name": "Admin: Logs", "description": "Operational logs and audit records."},
 ]
 
 app = FastAPI(
@@ -54,7 +59,15 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup_event():
-    initialize_database()
+    db_ready = initialize_database()
+    if db_ready:
+        try:
+            bootstrap_admin_defaults()
+            # Refresh project registry from DB after bootstrap
+            from app.core.project_manager import project_manager
+            project_manager.refresh_from_db()
+        except DatabaseUnavailable:
+            pass
     initialize_search_backends()
     initialize_guardrails()
     initialize_genai_client()

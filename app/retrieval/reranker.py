@@ -2,6 +2,7 @@
 Reranker module using cross-encoder for improved relevance scoring.
 """
 import logging
+import os
 from typing import Any, Dict, List, Tuple
 
 import torch
@@ -9,8 +10,8 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 
 logger = logging.getLogger(__name__)
-RERANKER_ENABLED = True
-RERANKER_MODEL_NAME = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+RERANKER_ENABLED = os.getenv("RERANKER_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
+RERANKER_MODEL_NAME = os.getenv("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
 
 _reranker_model = None
 _tokenizer = None
@@ -27,12 +28,18 @@ def initialize_reranker():
         logger.info("Reranking disabled")
         return
 
-    logger.info("Loading reranker model: %s", RERANKER_MODEL_NAME)
-    _tokenizer = AutoTokenizer.from_pretrained(RERANKER_MODEL_NAME)
-    _reranker_model = AutoModelForSequenceClassification.from_pretrained(RERANKER_MODEL_NAME)
-    _device = "cuda" if torch.cuda.is_available() else "cpu"
-    _reranker_model.to(_device)
-    _reranker_model.eval()
+    try:
+        logger.info("Loading reranker model: %s", RERANKER_MODEL_NAME)
+        _tokenizer = AutoTokenizer.from_pretrained(RERANKER_MODEL_NAME)
+        _reranker_model = AutoModelForSequenceClassification.from_pretrained(RERANKER_MODEL_NAME)
+        _device = "cuda" if torch.cuda.is_available() else "cpu"
+        _reranker_model.to(_device)
+        _reranker_model.eval()
+    except Exception as exc:
+        logger.warning("Reranker unavailable; continuing without reranking. Reason: %s", exc)
+        _tokenizer = None
+        _reranker_model = None
+        _device = None
 
 
 def rerank_results(query: str, results: Dict[str, Any], top_n: int = 5) -> Dict[str, Any]:

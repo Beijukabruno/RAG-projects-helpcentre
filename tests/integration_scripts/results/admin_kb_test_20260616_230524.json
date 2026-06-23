@@ -1,0 +1,140 @@
+{
+  "list_kb": {
+    "project_id": "tb",
+    "audience": "general",
+    "sources": [
+      {
+        "file_name": "00-general-system-guide.md",
+        "source_name": "DSI MDR-TB platform",
+        "source_url": "https://mdrweb.emergentai.ug/",
+        "size_bytes": 17775
+      },
+      {
+        "file_name": "CDC_Treatment_Guidelines.md",
+        "source_name": "CDC What You Need to Know About TB PDF",
+        "source_url": "https://www.cdc.gov/tb/media/pdfs/What_You_Need_to_Know_About_TB.pdf",
+        "size_bytes": 7839
+      },
+      {
+        "file_name": "Diagnosis.md",
+        "source_name": "CDC TB Diagnosis Guidelines",
+        "source_url": "https://www.cdc.gov/tb/diagnosis/",
+        "size_bytes": 5938
+      },
+      {
+        "file_name": "FAQ.md",
+        "source_name": "WHO TB Fact Sheet",
+        "source_url": "https://www.who.int/news-room/fact-sheets/detail/tuberculosis",
+        "size_bytes": 10034
+      },
+      {
+        "file_name": "Global_Impact.md",
+        "source_name": "WHO Global TB Report 2024",
+        "source_url": "https://www.who.int/publications/digital/global-tuberculosis-report-2024",
+        "size_bytes": 7636
+      },
+      {
+        "file_name": "MDR_TB.md",
+        "source_name": "WHO Global TB Report 2024",
+        "source_url": "https://www.who.int/publications/digital/global-tuberculosis-report-2024",
+        "size_bytes": 7370
+      },
+      {
+        "file_name": "NTLP_Manual_3rd_Edition_2017.md",
+        "source_name": "Ministry of Health - NTLP Manual (3rd edition)",
+        "source_url": "https://health.go.ug/sites/default/files/NTLP%20Manual%203rd%20edition_17th%20Aug_final.pdf",
+        "size_bytes": 52515
+      },
+      {
+        "file_name": "Platform_Support.md",
+        "source_name": "DSI MDR System Documentation",
+        "source_url": "https://dsi-mdr.emergentai.ug/",
+        "size_bytes": 7118
+      },
+      {
+        "file_name": "Prevention.md",
+        "source_name": "CDC TB Prevention",
+        "source_url": "https://www.cdc.gov/tb/prevention/",
+        "size_bytes": 5075
+      },
+      {
+        "file_name": "Risk_Factors_TB_and_HIV.md",
+        "source_name": "CDC TB-HIV Guidelines",
+        "source_url": "https://www.cdc.gov/tb/hiv/",
+        "size_bytes": 3659
+      },
+      {
+        "file_name": "Signs_and_Symptoms.md",
+        "source_name": "CDC TB Symptoms Guide",
+        "source_url": "https://www.cdc.gov/tb/communication-resources/tuberculosis-fact-sheet.html",
+        "size_bytes": 3156
+      },
+      {
+        "file_name": "TB_Treatment_Facilities.md",
+        "source_name": "Uganda Ministry of Health",
+        "source_url": "https://www.health.go.ug",
+        "size_bytes": 9848
+      },
+      {
+        "file_name": "Treatment_and_Side_Effects.md",
+        "source_name": "CDC Staying on Track with TB Medicine PDF",
+        "source_url": "https://www.cdc.gov/tb/media/Staying_on_Track_with_TB_Medicine.pdf",
+        "size_bytes": 7273
+      },
+      {
+        "file_name": "Uganda_MOH_TB_Infection_Control_Guidelines_2011.md",
+        "source_name": "Republic of Uganda - Ministry of Health (TB Infection Control Guidelines 2011)",
+        "source_url": "https://library.health.go.ug/sites/default/files/resources/Final%20TB%20Infection%20Control%20Guidelines%202011.pdf",
+        "size_bytes": 73211
+      }
+    ],
+    "assets": [
+      {
+        "id": "3b73dba7-faa6-4872-92e5-7298cb9a73ef",
+        "source_name": "API Test Upload",
+        "source_url": null,
+        "source_file": "api_test.md",
+        "status": "deleted",
+        "created_at": "2026-06-14T19:21:42.874750+00:00"
+      },
+      {
+        "id": "fa24da2c-c115-48e9-8c28-1e5575734aef",
+        "source_name": "API Test Upload",
+        "source_url": null,
+        "source_file": "api_test.md",
+        "status": "deleted",
+        "created_at": "2026-06-14T19:17:57.359783+00:00"
+      },
+      {
+        "id": "571d0c1d-76cb-48e6-bbbd-f1d43192f308",
+        "source_name": "Test Upload",
+        "source_url": "http://example.com/test",
+        "source_file": "test_upload.md",
+        "status": "active",
+        "created_at": "2026-06-14T19:08:10.744275+00:00"
+      },
+      {
+        "id": "ceacdae9-d8c2-4d3d-87aa-c93baf7b6e37",
+        "source_name": "Test Upload",
+        "source_url": "http://example.com/test",
+        "source_file": "test_upload.md",
+        "status": "active",
+        "created_at": "2026-06-14T18:55:29.041351+00:00"
+      }
+    ]
+  },
+  "upload_csv": {
+    "detail": "Only .md, .pdf files are supported."
+  },
+  "upload_kb": {
+    "asset_id": "05fa31dd-9ce4-486b-aa11-f131705e99b2",
+    "job_id": "58083e74-eb5d-408d-b66c-61149a95df29",
+    "file_name": "integration_test_doc.md",
+    "status": "pending_review"
+  },
+  "delete_kb": {
+    "file_name": "integration_test_doc.md",
+    "file_deleted": true,
+    "chunks_deleted": 0
+  }
+}

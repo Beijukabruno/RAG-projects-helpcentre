@@ -9,6 +9,7 @@ __pycache__/
 # Environment
 .env
 .env.*
+!.env.example
 
 # Generated vector database artifacts
 Vector_db/
@@ -33,3 +34,10 @@ Thumbs.db
 # Other
 chunks.json
 .pytest_cache/
+
+.agents
+.claude
+.codex
+.idea
+.junie
+.sixth

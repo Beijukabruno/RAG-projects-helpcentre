@@ -1,0 +1,365 @@
+{
+  "platform_overview": {
+    "total_projects": 3,
+    "total_users": 1,
+    "total_messages": 4,
+    "recent_audit_logs": [
+      {
+        "id": "ef81b09f-f67b-40af-b27c-9ca6aee0c6d1",
+        "actor_email": "system",
+        "action": "project.delete",
+        "entity_type": "project",
+        "entity_id": "proj_195128",
+        "project_id": null,
+        "payload": null,
+        "created_at": "2026-06-15T19:44:37.217985+00:00"
+      },
+      {
+        "id": "b68bbd8c-2087-40c2-b5b1-7f9a3d069bd6",
+        "actor_email": "system",
+        "action": "user.delete",
+        "entity_type": "user",
+        "entity_id": "64851e2b-a7c5-43ca-86eb-644bce6e5282",
+        "project_id": null,
+        "payload": null,
+        "created_at": "2026-06-15T19:44:37.197573+00:00"
+      },
+      {
+        "id": "7f9dd971-6ecd-4ec6-9a04-225fccf93751",
+        "actor_email": "system",
+        "action": "project.admin.remove",
+        "entity_type": "user",
+        "entity_id": "64851e2b-a7c5-43ca-86eb-644bce6e5282",
+        "project_id": null,
+        "payload": null,
+        "created_at": "2026-06-15T19:44:37.181846+00:00"
+      },
+      {
+        "id": "89725872-3e59-4e72-a34b-1897ae46820e",
+        "actor_email": "system",
+        "action": "project.admin.add",
+        "entity_type": "user",
+        "entity_id": "64851e2b-a7c5-43ca-86eb-644bce6e5282",
+        "project_id": null,
+        "payload": null,
+        "created_at": "2026-06-15T19:44:37.169302+00:00"
+      },
+      {
+        "id": "c5640f73-f6b2-4db6-9e41-61d3943f72b6",
+        "actor_email": "system",
+        "action": "user.create",
+        "entity_type": "user",
+        "entity_id": "64851e2b-a7c5-43ca-86eb-644bce6e5282",
+        "project_id": null,
+        "payload": null,
+        "created_at": "2026-06-15T19:44:37.129503+00:00"
+      }
+    ]
+  },
+  "project_overview": {
+    "project_id": "tb",
+    "project_name": "Tb",
+    "total_user_messages": 4,
+    "average_rating": 0.0,
+    "total_sources": 4,
+    "active_ingestion_jobs": 0,
+    "recent_audit_logs": [
+      {
+        "id": "2dbc0f4e-3e5c-4195-be1c-f7c3b4ed3804",
+        "actor_email": "admin@example.com",
+        "action": "knowledge_base.source.remove",
+        "entity_type": "source",
+        "entity_id": "api_test.md",
+        "project_id": "tb",
+        "payload": {
+          "audience": "general",
+          "file_name": "api_test.md",
+          "file_deleted": true,
+          "chunks_deleted": 1
+        },
+        "created_at": "2026-06-14T19:21:44.290400+00:00"
+      },
+      {
+        "id": "fe422a11-4022-4fb7-96c2-a244a3bac053",
+        "actor_email": "admin@example.com",
+        "action": "knowledge_base.source.activate",
+        "entity_type": "source",
+        "entity_id": "3b73dba7-faa6-4872-92e5-7298cb9a73ef",
+        "project_id": "tb",
+        "payload": {
+          "audience": "general",
+          "chunk_count": 1,
+          "index_run_id": "e78b8541-2668-449f-ac4b-a471ead88ea0"
+        },
+        "created_at": "2026-06-14T19:21:44.272457+00:00"
+      },
+      {
+        "id": "d1792116-a5cc-4387-8127-4f3da7ff42d3",
+        "actor_email": "admin@example.com",
+        "action": "knowledge_base.source.upload",
+        "entity_type": "source",
+        "entity_id": "api_test.md",
+        "project_id": "tb",
+        "payload": {
+          "job_id": "4c4af23c-bfea-4e38-adab-02a3a2692cb9",
+          "asset_id": "3b73dba7-faa6-4872-92e5-7298cb9a73ef",
+          "audience": "general"
+        },
+        "created_at": "2026-06-14T19:21:42.878815+00:00"
+      },
+      {
+        "id": "15bed27d-5f5a-4759-a07e-45c27f748915",
+        "actor_email": "admin@example.com",
+        "action": "knowledge_base.source.activate",
+        "entity_type": "source",
+        "entity_id": "fa24da2c-c115-48e9-8c28-1e5575734aef",
+        "project_id": "tb",
+        "payload": {
+          "audience": "general",
+          "chunk_count": 1,
+          "index_run_id": "8292d7e5-4ca7-44e7-8e66-bac8ad7e93ca"
+        },
+        "created_at": "2026-06-14T19:17:59.137462+00:00"
+      },
+      {
+        "id": "9b6717eb-f889-44d8-a702-3ff5deb76586",
+        "actor_email": "admin@example.com",
+        "action": "knowledge_base.source.upload",
+        "entity_type": "source",
+        "entity_id": "api_test.md",
+        "project_id": "tb",
+        "payload": {
+          "job_id": "6a68939f-9fbe-4294-b809-0d4bcc580b9c",
+          "asset_id": "fa24da2c-c115-48e9-8c28-1e5575734aef",
+          "audience": "general"
+        },
+        "created_at": "2026-06-14T19:17:57.363036+00:00"
+      }
+    ]
+  },
+  "global_audit_logs": {
+    "logs": [
+      {
+        "id": "ef81b09f-f67b-40af-b27c-9ca6aee0c6d1",
+        "actor_email": "system",
+        "action": "project.delete",
+        "entity_type": "project",
+        "entity_id": "proj_195128",
+        "project_id": null,
+        "payload": null,
+        "created_at": "2026-06-15T19:44:37.217985+00:00"
+      },
+      {
+        "id": "b68bbd8c-2087-40c2-b5b1-7f9a3d069bd6",
+        "actor_email": "system",
+        "action": "user.delete",
+        "entity_type": "user",
+        "entity_id": "64851e2b-a7c5-43ca-86eb-644bce6e5282",
+        "project_id": null,
+        "payload": null,
+        "created_at": "2026-06-15T19:44:37.197573+00:00"
+      },
+      {
+        "id": "7f9dd971-6ecd-4ec6-9a04-225fccf93751",
+        "actor_email": "system",
+        "action": "project.admin.remove",
+        "entity_type": "user",
+        "entity_id": "64851e2b-a7c5-43ca-86eb-644bce6e5282",
+        "project_id": null,
+        "payload": null,
+        "created_at": "2026-06-15T19:44:37.181846+00:00"
+      },
+      {
+        "id": "89725872-3e59-4e72-a34b-1897ae46820e",
+        "actor_email": "system",
+        "action": "project.admin.add",
+        "entity_type": "user",
+        "entity_id": "64851e2b-a7c5-43ca-86eb-644bce6e5282",
+        "project_id": null,
+        "payload": null,
+        "created_at": "2026-06-15T19:44:37.169302+00:00"
+      },
+      {
+        "id": "c5640f73-f6b2-4db6-9e41-61d3943f72b6",
+        "actor_email": "system",
+        "action": "user.create",
+        "entity_type": "user",
+        "entity_id": "64851e2b-a7c5-43ca-86eb-644bce6e5282",
+        "project_id": null,
+        "payload": null,
+        "created_at": "2026-06-15T19:44:37.129503+00:00"
+      },
+      {
+        "id": "f97c48ce-5177-4341-803e-ff7562faf0f4",
+        "actor_email": "system",
+        "action": "project.update",
+        "entity_type": "project",
+        "entity_id": "proj_195128",
+        "project_id": null,
+        "payload": null,
+        "created_at": "2026-06-15T19:44:36.874863+00:00"
+      },
+      {
+        "id": "5a09a5be-2ccf-481b-9270-673a4bbfaf52",
+        "actor_email": "system",
+        "action": "project.create",
+        "entity_type": "project",
+        "entity_id": "proj_195128",
+        "project_id": null,
+        "payload": null,
+        "created_at": "2026-06-15T19:44:36.850298+00:00"
+      },
+      {
+        "id": "e0327c44-2959-4bc8-a751-9e301327b0d7",
+        "actor_email": "system",
+        "action": "user.delete",
+        "entity_type": "user",
+        "entity_id": "c4737100-5a8f-4e8c-b1bb-ed886dee7b63",
+        "project_id": null,
+        "payload": null,
+        "created_at": "2026-06-15T19:43:52.836015+00:00"
+      },
+      {
+        "id": "1433400e-e72d-46de-84af-3ec3b04fcb21",
+        "actor_email": "system",
+        "action": "user.role.remove",
+        "entity_type": "user",
+        "entity_id": "c4737100-5a8f-4e8c-b1bb-ed886dee7b63",
+        "project_id": null,
+        "payload": {
+          "role": "super_admin"
+        },
+        "created_at": "2026-06-15T19:43:52.820135+00:00"
+      },
+      {
+        "id": "f1197a76-e1c4-4d21-aaf8-15ba7707614c",
+        "actor_email": "system",
+        "action": "user.role.add",
+        "entity_type": "user",
+        "entity_id": "c4737100-5a8f-4e8c-b1bb-ed886dee7b63",
+        "project_id": null,
+        "payload": {
+          "role": "super_admin"
+        },
+        "created_at": "2026-06-15T19:43:52.803011+00:00"
+      }
+    ]
+  },
+  "project_audit_logs": {
+    "project_id": "tb",
+    "logs": [
+      {
+        "id": "2dbc0f4e-3e5c-4195-be1c-f7c3b4ed3804",
+        "actor_email": "admin@example.com",
+        "action": "knowledge_base.source.remove",
+        "entity_type": "source",
+        "entity_id": "api_test.md",
+        "project_id": "tb",
+        "payload": {
+          "audience": "general",
+          "file_name": "api_test.md",
+          "file_deleted": true,
+          "chunks_deleted": 1
+        },
+        "created_at": "2026-06-14T19:21:44.290400+00:00"
+      },
+      {
+        "id": "fe422a11-4022-4fb7-96c2-a244a3bac053",
+        "actor_email": "admin@example.com",
+        "action": "knowledge_base.source.activate",
+        "entity_type": "source",
+        "entity_id": "3b73dba7-faa6-4872-92e5-7298cb9a73ef",
+        "project_id": "tb",
+        "payload": {
+          "audience": "general",
+          "chunk_count": 1,
+          "index_run_id": "e78b8541-2668-449f-ac4b-a471ead88ea0"
+        },
+        "created_at": "2026-06-14T19:21:44.272457+00:00"
+      },
+      {
+        "id": "d1792116-a5cc-4387-8127-4f3da7ff42d3",
+        "actor_email": "admin@example.com",
+        "action": "knowledge_base.source.upload",
+        "entity_type": "source",
+        "entity_id": "api_test.md",
+        "project_id": "tb",
+        "payload": {
+          "job_id": "4c4af23c-bfea-4e38-adab-02a3a2692cb9",
+          "asset_id": "3b73dba7-faa6-4872-92e5-7298cb9a73ef",
+          "audience": "general"
+        },
+        "created_at": "2026-06-14T19:21:42.878815+00:00"
+      },
+      {
+        "id": "15bed27d-5f5a-4759-a07e-45c27f748915",
+        "actor_email": "admin@example.com",
+        "action": "knowledge_base.source.activate",
+        "entity_type": "source",
+        "entity_id": "fa24da2c-c115-48e9-8c28-1e5575734aef",
+        "project_id": "tb",
+        "payload": {
+          "audience": "general",
+          "chunk_count": 1,
+          "index_run_id": "8292d7e5-4ca7-44e7-8e66-bac8ad7e93ca"
+        },
+        "created_at": "2026-06-14T19:17:59.137462+00:00"
+      },
+      {
+        "id": "9b6717eb-f889-44d8-a702-3ff5deb76586",
+        "actor_email": "admin@example.com",
+        "action": "knowledge_base.source.upload",
+        "entity_type": "source",
+        "entity_id": "api_test.md",
+        "project_id": "tb",
+        "payload": {
+          "job_id": "6a68939f-9fbe-4294-b809-0d4bcc580b9c",
+          "asset_id": "fa24da2c-c115-48e9-8c28-1e5575734aef",
+          "audience": "general"
+        },
+        "created_at": "2026-06-14T19:17:57.363036+00:00"
+      },
+      {
+        "id": "d33e6c9c-fac6-4d1e-84d5-2e6135a08ca0",
+        "actor_email": "admin@example.com",
+        "action": "knowledge_base.source.activate",
+        "entity_type": "source",
+        "entity_id": "571d0c1d-76cb-48e6-bbbd-f1d43192f308",
+        "project_id": "tb",
+        "payload": {
+          "audience": "general",
+          "chunk_count": 1,
+          "index_run_id": "0de01b1f-f2ed-459e-a842-c86ff0323a07"
+        },
+        "created_at": "2026-06-14T19:08:11.908883+00:00"
+      },
+      {
+        "id": "d73e2b87-14fc-43ca-b5a1-98d45718085b",
+        "actor_email": "admin@example.com",
+        "action": "knowledge_base.source.upload",
+        "entity_type": "source",
+        "entity_id": "test_upload.md",
+        "project_id": "tb",
+        "payload": {
+          "job_id": "c4ed1948-70dc-443a-8c45-53690eba1fbd",
+          "asset_id": "571d0c1d-76cb-48e6-bbbd-f1d43192f308",
+          "audience": "general"
+        },
+        "created_at": "2026-06-14T19:08:10.747957+00:00"
+      },
+      {
+        "id": "6f03bc13-35e8-4ea0-a7d0-6ce6beebaa3e",
+        "actor_email": "admin@example.com",
+        "action": "knowledge_base.source.add",
+        "entity_type": "source",
+        "entity_id": "test_upload.md",
+        "project_id": "tb",
+        "payload": {
+          "audience": "general",
+          "chunk_count": 1
+        },
+        "created_at": "2026-06-14T18:55:29.045283+00:00"
+      }
+    ]
+  }
+}

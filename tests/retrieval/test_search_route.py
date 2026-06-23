@@ -8,7 +8,7 @@ def test_search_general_route(monkeypatch):
     monkeypatch.setattr(
         search_routes,
         "search",
-        lambda query, k, audience: {
+        lambda query, k, audience, project_id="tb": {
             "ids": [["general_doc_1"]],
             "documents": [["TB can spread through the air."]],
             "metadatas": [[{"source_file": "FAQ.md", "source_name": "FAQ", "source_url": "https://example.com"}]],
@@ -29,7 +29,7 @@ def test_search_empty_results_returns_message(monkeypatch):
     monkeypatch.setattr(
         search_routes,
         "search",
-        lambda query, k, audience: {
+        lambda query, k, audience, project_id="tb": {
             "ids": [[]],
             "documents": [[]],
             "metadatas": [[]],

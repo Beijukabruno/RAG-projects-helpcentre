@@ -58,6 +58,8 @@ CORS_ALLOW_ORIGINS = os.getenv("CORS_ALLOW_ORIGINS", "*")
 JWT_SECRET = os.getenv("JWT_SECRET", "dev-insecure-change-me")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "720"))  # 12h default
+BOOTSTRAP_SUPER_ADMIN_EMAIL = os.getenv("BOOTSTRAP_SUPER_ADMIN_EMAIL")
+BOOTSTRAP_SUPER_ADMIN_PASSWORD = os.getenv("BOOTSTRAP_SUPER_ADMIN_PASSWORD")
 
 # Role / membership constants
 ROLE_SUPER_ADMIN = "super_admin"

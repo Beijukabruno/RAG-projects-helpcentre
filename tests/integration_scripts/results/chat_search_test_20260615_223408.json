@@ -1,0 +1,80 @@
+{
+  "search_tb_general": {
+    "query": "What is TB?",
+    "total_matches": 3,
+    "matches": [
+      {
+        "doc_id": "general_Uganda_MOH_TB_Infection_Control_Guidelines_2011.md_252",
+        "full_text": "This chapter focuses particularly on prisons because they are often crowded and are often poorly ventilated leading to a high-risk for the spread of pulmonary tuberculosis (TB). Prisoners already have elevated risk for TB because of their lifestyles, inadequate pre-incarceration healthcare, and increased risk for HIV infection.\n\nThere is evidence from a number of studies done around the world that clearly shows incidences of TB infection and TB disease among individuals in prisons and other congregate places, like primary schools, exceeds the incidence among the general population. Furthermore, the association of HIV and TB together with the emergence of MDR-TB and XDR-TB increase the need to give urgent and appropriate attention to implementation of TB infection control in congregate settings.",
+        "chunk_size": 805,
+        "source_file": "Uganda_MOH_TB_Infection_Control_Guidelines_2011.md",
+        "source_name": "Republic of Uganda - Ministry of Health (TB Infection Control Guidelines 2011)",
+        "source_url": "https://library.health.go.ug/sites/default/files/resources/Final%20TB%20Infection%20Control%20Guidelines%202011.pdf"
+      },
+      {
+        "doc_id": "general_Uganda_MOH_TB_Infection_Control_Guidelines_2011.md_177",
+        "full_text": "Tuberculosis infection control requires and complements the implementation of core interventions in TB control, HIV control and strengthening of health systems. It is important and imperative for national planners to include TB infection control in the national infection prevention and control policies and or practices, and should maximize synergies between programs that deal with infection prevention and control, and those focusing on TB and HIV control.\n\n## 1.3. TB infection control measures\n\nThere are three broad categories constituting a set of TB infection control measures:\n- Administrative (work practices)\n- Environmental\n- Personal protective equipment.\n\nAs will be described below the administrative, environmental and personal protective equipment control measures operate at different points in the TB transmission process. The three categories of TB infection control measures complement each other and where feasible should as much as possible be used as a combination.",
+        "chunk_size": 989,
+        "source_file": "Uganda_MOH_TB_Infection_Control_Guidelines_2011.md",
+        "source_name": "Republic of Uganda - Ministry of Health (TB Infection Control Guidelines 2011)",
+        "source_url": "https://library.health.go.ug/sites/default/files/resources/Final%20TB%20Infection%20Control%20Guidelines%202011.pdf"
+      },
+      {
+        "doc_id": "general_Uganda_MOH_TB_Infection_Control_Guidelines_2011.md_174",
+        "full_text": "This policy guidelines focuses on providing guidance on TB infection control in health care facilities, schools, prisons and other congregate settings because the prevalence of TB among people living or working in these settings exceeds the prevalence found in the general population. The document also provides guidance on preventing TB transmission in households because the TB incidence among the household contacts of TB patients also exceeds the incidence found in the general population.\n\nSpecial attention is given to HIV care settings because persons living with HIV (PLHIV) and their close contacts, including HIV positive health care workers are particularly vulnerable to developing TB disease if they become infected with Mycobacterium tuberculosis (Mycobacterium tuberculosis is the germ that causes TB).\n\n## 1.2. Who should use this TB infection control guidelines?",
+        "chunk_size": 879,
+        "source_file": "Uganda_MOH_TB_Infection_Control_Guidelines_2011.md",
+        "source_name": "Republic of Uganda - Ministry of Health (TB Infection Control Guidelines 2011)",
+        "source_url": "https://library.health.go.ug/sites/default/files/resources/Final%20TB%20Infection%20Control%20Guidelines%202011.pdf"
+      }
+    ],
+    "toxicity_input": {
+      "label": "NOT_TOXIC",
+      "score": 0.9998382329940796
+    },
+    "toxicity_output": {
+      "label": "NOT_TOXIC",
+      "score": 0.9991747736930847
+    },
+    "message": null
+  },
+  "chat_tb_general": {
+    "query": "Tell me about TB treatment.",
+    "answer": "TB treatment aims for high success rates, with a cure rate of over 95% for drug-sensitive TB, 70-80% for MDR-TB, and 50-60% for XDR-TB. Patients typically begin to see symptom improvement and become non-infectious within the first 2 to 4 weeks of treatment. After two months, most patients experience significant improvement and can often return to normal activities.\n\nTo ensure the treatment is successful, patients are encouraged to:\n* Take medications exactly as prescribed and complete the full course, even if they feel better.\n* Keep all medical appointments and report any side effects immediately.\n* Maintain good nutrition and avoid alcohol and smoking.\n\nMonitoring and care are tailored to the individual's needs:\n* **Pulmonary TB:** Monitoring includes sputum smears at 2, 5, and 6 months.\n* **Children and Extrapulmonary TB (EPTB):** Clinical monitoring, such as assessing weight gain and symptom reduction, is essential.\n* **HIV Co-infection:** Treatment is coordinated with ART, and TB treatment is started first if the patient is severely ill.\n* **Elderly Patients:** Care involves monitoring for drug interactions and side effects, considering comorbidities, and careful dose adjustment.\n\nPlease note that specific medication names and detailed dosage regimens were not provided in the available information.",
+    "sources": [
+      {
+        "doc_id": "general_CDC_Treatment_Guidelines.md_30",
+        "full_text": "### HIV Co-infection:\n\u2022 **Start TB treatment first** if severely ill\n\u2022 **Coordinate with ART**\n\u2022 **Monitor drug interactions**\n\u2022 **Watch for IRIS** (immune reconstitution syndrome)\n\n### Elderly Patients:\n\u2022 **Careful dose adjustment**\n\u2022 **Monitor for drug interactions**\n\u2022 **Watch for side effects**\n\u2022 **Consider comorbidities**\n\n## Treatment Success Factors\n\n### Patient Factors:\n\u2022 **Medication adherence**\n\u2022 **Completion of full course**\n\u2022 **Regular follow-up visits**\n\u2022 **Prompt reporting of side effects**\n\u2022 **Lifestyle modifications** (no alcohol, good nutrition)\n\n### Healthcare System Factors:\n\u2022 **Appropriate treatment regimen**\n\u2022 **Quality medications**\n\u2022 **Regular monitoring**\n\u2022 **Patient education**\n\u2022 **Social support**\n\n## Treatment Outcomes\n\n### Expected Success Rates:\n\u2022 **Drug-sensitive TB:** 95%+ cure rate\n\u2022 **MDR-TB:** 70-80% success rate\n\u2022 **XDR-TB:** 50-60% success rate",
+        "chunk_size": 891,
+        "source_file": "CDC_Treatment_Guidelines.md",
+        "source_name": "CDC What You Need to Know About TB PDF",
+        "source_url": "https://www.cdc.gov/tb/media/pdfs/What_You_Need_to_Know_About_TB.pdf"
+      },
+      {
+        "doc_id": "general_NTLP_Manual_3rd_Edition_2017.md_80",
+        "full_text": "### 2.3.7 Treatment Monitoring\n- **Laboratory monitoring (pulmonary TB)**:\n  - Sputum smear at end of initial phase (2 months), 5 months, and 6 months.\n  - Positive smear at 2 months: do Xpert MTB/RIF.\n    - If RR: refer for MDR treatment.\n    - If RS: continue first-line; explore adherence; repeat smear at 3 months.\n  - Positive smear at 5 or 6 months: diagnose treatment failure; do Xpert.\n- **Clinical monitoring**:\n  - Essential for children and EPTB.\n  - Assess weight gain, symptom reduction.\n- **Radiological monitoring**:\n  - Not used alone; must accompany sputum/clinical monitoring.",
+        "chunk_size": 594,
+        "source_file": "NTLP_Manual_3rd_Edition_2017.md",
+        "source_name": "Ministry of Health - NTLP Manual (3rd edition)",
+        "source_url": "https://health.go.ug/sites/default/files/NTLP%20Manual%203rd%20edition_17th%20Aug_final.pdf"
+      },
+      {
+        "doc_id": "general_Treatment_and_Side_Effects.md_170",
+        "full_text": "## Treatment Success Factors\n\n### Patient Factors:\n\u2022 **Take medications exactly as prescribed**\n\u2022 **Complete full course** even if feeling better\n\u2022 **Keep all medical appointments**\n\u2022 **Report side effects immediately**\n\u2022 **Maintain good nutrition**\n\u2022 **Avoid alcohol and smoking**\n\n### Healthcare System Factors:\n\u2022 **Free treatment** availability\n\u2022 **Regular drug supply**\n\u2022 **Trained healthcare workers**\n\u2022 **Laboratory monitoring** capacity\n\u2022 **Contact tracing** services\n\n## What to Expect During Treatment\n\n### First 2-4 weeks:\n\u2022 **Symptoms begin improving**\n\u2022 **Become non-infectious** (if pulmonary TB)\n\u2022 **May experience minor side effects**\n\u2022 **Energy levels start returning**\n\n### After 2 months:\n\u2022 **Significant improvement** in symptoms\n\u2022 **Sputum becomes negative** (most patients)\n\u2022 **Chest X-ray shows improvement**\n\u2022 **Can return to normal activities**",
+        "chunk_size": 868,
+        "source_file": "Treatment_and_Side_Effects.md",
+        "source_name": "CDC Staying on Track with TB Medicine PDF",
+        "source_url": "https://www.cdc.gov/tb/media/Staying_on_Track_with_TB_Medicine.pdf"
+      }
+    ],
+    "llm_model": "models/gemma-4-31b-it",
+    "toxicity_input": {
+      "label": "NOT_TOXIC",
+      "score": 0.998991072177887
+    },
+    "toxicity_output": {
+      "label": "NOT_TOXIC",
+      "score": 0.9995788931846619
+    }
+  }
+}

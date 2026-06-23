@@ -1,31 +1,27 @@
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
 # System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential git \
+    build-essential curl git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install PyTorch CPU wheel for sentence-transformers
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
-
-# Copy requirements and install
+# Install PyTorch CPU and requirements
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Add GEMMA_API_KEY as a build argument and environment variable
-ARG GEMMA_API_KEY
-ENV GEMMA_API_KEY=$GEMMA_API_KEY
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir -r requirements.txt
 
 ENV PYTHONPATH="/app:$PYTHONPATH"
+ENV PYTHONUNBUFFERED=1
 
 COPY . .
 
-RUN chmod +x ./deploy/scripts/entrypoint.sh ./deploy/scripts/healthcheck.sh
+RUN chmod +x ./deploy/scripts/entry.sh ./deploy/scripts/entrypoint.sh ./deploy/scripts/healthcheck.sh
 
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 CMD ./deploy/scripts/healthcheck.sh
 
-ENTRYPOINT ["./deploy/scripts/entrypoint.sh"]
+ENTRYPOINT ["./deploy/scripts/entry.sh"]
+CMD ["api"]

@@ -1,4 +1,5 @@
 import logging
+import os
 
 from app.core.config import (
     EMBEDDING_MODEL,
@@ -12,8 +13,8 @@ from sqlalchemy import text
 
 
 logger = logging.getLogger(__name__)
-RERANKER_ENABLED = True
-RERETRIEVAL_K = 20
+RERANKER_ENABLED = os.getenv("RERANKER_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
+RERETRIEVAL_K = int(os.getenv("RERETRIEVAL_K", "20"))
 
 def _vector_to_pg_literal(vector):
     return "[" + ",".join(f"{float(v):.8f}" for v in vector) + "]"

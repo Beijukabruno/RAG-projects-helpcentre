@@ -1,0 +1,42 @@
+{
+  "list_users": {
+    "users": [
+      {
+        "id": "172e6cac-9e43-44aa-bf9b-ad3427290ec5",
+        "email": "admin@example.com",
+        "full_name": "Super Admin",
+        "is_active": true,
+        "roles": [
+          "super_admin"
+        ],
+        "project_ids": [],
+        "created_at": "2026-06-14T18:44:18.922148+00:00"
+      }
+    ]
+  },
+  "create_user": {
+    "id": "c4737100-5a8f-4e8c-b1bb-ed886dee7b63",
+    "email": "user_c8ca7e@example.com",
+    "full_name": "Integration Test User",
+    "is_active": true,
+    "roles": [
+      "project_admin"
+    ],
+    "project_ids": [
+      "tb"
+    ],
+    "created_at": "2026-06-15T19:43:52.739005+00:00"
+  },
+  "deactivate_user": {
+    "ok": true
+  },
+  "add_role": {
+    "ok": true
+  },
+  "remove_role": {
+    "ok": true
+  },
+  "delete_user": {
+    "ok": true
+  }
+}

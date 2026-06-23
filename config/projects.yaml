@@ -23,16 +23,16 @@ projects:
         - "Explain pathology, risk factors, and follow-up in clear language for the selected audience."
         - "Avoid conflating cervical cancer guidance with unrelated gynecologic conditions unless explicitly supported by the sources."
   
-  maternal_health:
-    audiences: [general, clinicians]
-    collections: {general: MATERNAL_GENERAL, clinicians: MATERNAL_CLINICIANS}
-    knowledge_base: {base_path: knowledge_bases/maternal_health}
-    llm:
-      model: gemma-4-31b-it
-      system_role: "Maternal health expert"
-      prompt_rules:
-        - "Prioritize pregnancy, childbirth, postpartum, and newborn-related advice where relevant."
-        - "Use audience-sensitive language, especially for mothers and general users."
-        - "Keep clinician instructions precise and distinguish them from general self-care guidance."
+  # maternal_health:
+  #   audiences: [general, clinicians]
+  #   collections: {general: MATERNAL_GENERAL, clinicians: MATERNAL_CLINICIANS}
+  #   knowledge_base: {base_path: knowledge_bases/maternal_health}
+  #   llm:
+  #     model: gemma-4-31b-it
+  #     system_role: "Maternal health expert"
+  #     prompt_rules:
+  #       - "Prioritize pregnancy, childbirth, postpartum, and newborn-related advice where relevant."
+  #       - "Use audience-sensitive language, especially for mothers and general users."
+  #       - "Keep clinician instructions precise and distinguish them from general self-care guidance."
   
-    # ... similar structure
+  #   # ... similar structure

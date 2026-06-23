@@ -1,0 +1,154 @@
+{
+  "list_projects": {
+    "projects": [
+      {
+        "id": "cervical_cancer",
+        "name": "Cervical Cancer",
+        "description": "",
+        "domain_url": null,
+        "enabled": true,
+        "status": "active",
+        "config_json": {
+          "llm": {
+            "model": "gemma-4-31b-it",
+            "system_role": "Cervical cancer expert",
+            "prompt_rules": [
+              "Prioritize screening, prevention, diagnosis, staging, and treatment guidance relevant to cervical cancer.",
+              "Explain pathology, risk factors, and follow-up in clear language for the selected audience.",
+              "Avoid conflating cervical cancer guidance with unrelated gynecologic conditions unless explicitly supported by the sources."
+            ]
+          },
+          "audiences": [
+            "general",
+            "clinicians"
+          ],
+          "collections": {
+            "general": "CERVICAL_GENERAL",
+            "clinicians": "CERVICAL_CLINICIANS"
+          },
+          "knowledge_base": {
+            "base_path": "knowledge_bases/cervical_cancer"
+          }
+        },
+        "created_at": "2026-06-03T07:48:17.310506+00:00",
+        "updated_at": "2026-06-16T19:33:23.393951+00:00"
+      },
+      {
+        "id": "maternal_health",
+        "name": "Maternal Health",
+        "description": "",
+        "domain_url": null,
+        "enabled": true,
+        "status": "active",
+        "config_json": {
+          "llm": {
+            "model": "gemma-4-31b-it",
+            "system_role": "Maternal health expert",
+            "prompt_rules": [
+              "Prioritize pregnancy, childbirth, postpartum, and newborn-related advice where relevant.",
+              "Use audience-sensitive language, especially for mothers and general users.",
+              "Keep clinician instructions precise and distinguish them from general self-care guidance."
+            ]
+          },
+          "audiences": [
+            "general",
+            "clinicians"
+          ],
+          "collections": {
+            "general": "MATERNAL_GENERAL",
+            "clinicians": "MATERNAL_CLINICIANS"
+          },
+          "knowledge_base": {
+            "base_path": "knowledge_bases/maternal_health"
+          }
+        },
+        "created_at": "2026-06-03T07:48:17.310506+00:00",
+        "updated_at": "2026-06-16T19:33:23.393951+00:00"
+      },
+      {
+        "id": "tb",
+        "name": "Tb",
+        "description": "",
+        "domain_url": null,
+        "enabled": true,
+        "status": "active",
+        "config_json": {
+          "llm": {
+            "model": "gemma-4-31b-it",
+            "system_role": "TB expert",
+            "prompt_rules": [
+              "Prioritize Ministry of Health guidance, WHO, CDC, and when present.",
+              "For treatment questions, distinguish between screening, diagnosis, general advice, and clinician-level guidance.",
+              "For drug names and regimens, preserve the exact regimen language from the retrieved sources."
+            ]
+          },
+          "audiences": [
+            "general",
+            "clinicians"
+          ],
+          "collections": {
+            "general": "TB_GENERAL",
+            "clinicians": "TB_CLINICIANS"
+          },
+          "knowledge_base": {
+            "base_path": "knowledge_bases/tb"
+          }
+        },
+        "created_at": "2026-06-03T07:48:17.310506+00:00",
+        "updated_at": "2026-06-16T19:33:23.393951+00:00"
+      }
+    ]
+  },
+  "create_project": {
+    "id": "proj_48555b",
+    "name": "Integration Test Project",
+    "description": "A project created during integration testing",
+    "domain_url": "https://test.example.com",
+    "enabled": true,
+    "status": "active",
+    "config_json": {
+      "setting": "value"
+    },
+    "created_at": "2026-06-16T19:36:55.052843+00:00",
+    "updated_at": "2026-06-16T19:36:55.052850+00:00"
+  },
+  "get_project": {
+    "id": "proj_48555b",
+    "name": "Integration Test Project",
+    "description": "A project created during integration testing",
+    "domain_url": "https://test.example.com",
+    "enabled": true,
+    "status": "active",
+    "config_json": {
+      "setting": "value"
+    },
+    "created_at": "2026-06-16T19:36:55.052843+00:00",
+    "updated_at": "2026-06-16T19:36:55.052850+00:00"
+  },
+  "update_project": {
+    "id": "proj_48555b",
+    "name": "Integration Test Project",
+    "description": "Updated description",
+    "domain_url": "https://test.example.com",
+    "enabled": true,
+    "status": "active",
+    "config_json": {
+      "setting": "value"
+    },
+    "created_at": "2026-06-16T19:36:55.052843+00:00",
+    "updated_at": "2026-06-16T19:36:55.109658+00:00"
+  },
+  "list_project_admins": {
+    "project_id": "proj_48555b",
+    "admins": []
+  },
+  "add_project_admin": {
+    "ok": true
+  },
+  "remove_project_admin": {
+    "ok": true
+  },
+  "delete_project": {
+    "ok": true
+  }
+}

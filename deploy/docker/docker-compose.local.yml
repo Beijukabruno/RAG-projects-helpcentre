@@ -1,35 +1,69 @@
 services:
-  postgres_helpcentre:
+  helpcentre_postgres:
     image: pgvector/pgvector:pg15
-    container_name: postgres_helpcentre_local
+    container_name: helpcentre_postgres_local
     restart: unless-stopped
     environment:
-      POSTGRES_USER: helpcentre_user
-      POSTGRES_PASSWORD: helpcentre_pass
-      POSTGRES_DB: helpcentre_db
+      POSTGRES_USER: ${POSTGRES_USER:-helpcentre_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-helpcentre_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-helpcentre_db}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
       - postgres_helpcentre_local_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
-  api:
-    image: beijuka/tb-chatbot:latest
+  helpcentre_indexer:
+    image: ${HELPCENTRE_IMAGE:-helpcentre-api:local}
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile
-    container_name: tb_chatbot_api_local
+    container_name: helpcentre_indexer_local
+    command: ["index"]
     depends_on:
-      - postgres_helpcentre
+      helpcentre_postgres:
+        condition: service_healthy
     env_file:
       - ../../.env
     environment:
-      # Inside the compose network the DB host is the service name, not 127.0.0.1.
-      # This overrides DATABASE_URL from .env (which targets the host for local uvicorn runs).
-      DATABASE_URL: postgresql://helpcentre_user:helpcentre_pass@postgres_helpcentre:5432/helpcentre_db
+      APP_NAME: helpcentre-indexer-local
+      DATABASE_URL: postgresql://${POSTGRES_USER:-helpcentre_user}:${POSTGRES_PASSWORD:-helpcentre_pass}@helpcentre_postgres:5432/${POSTGRES_DB:-helpcentre_db}
+      INDEX_PROJECTS: ${INDEX_PROJECTS:-tb,cervical_cancer}
+      CHUNKING_STRATEGY: ${CHUNKING_STRATEGY:-semantic}
+    profiles:
+      - bootstrap
+    restart: "no"
+
+  helpcentre_api:
+    image: ${HELPCENTRE_IMAGE:-helpcentre-api:local}
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    container_name: helpcentre_api_local
+    depends_on:
+      helpcentre_postgres:
+        condition: service_healthy
+    env_file:
+      - ../../.env
+    environment:
+      APP_NAME: helpcentre-api-local
+      DATABASE_URL: postgresql://${POSTGRES_USER:-helpcentre_user}:${POSTGRES_PASSWORD:-helpcentre_pass}@helpcentre_postgres:5432/${POSTGRES_DB:-helpcentre_db}
+      INDEX_PROJECTS: ${INDEX_PROJECTS:-tb,cervical_cancer}
+      BOOTSTRAP_INDEX_ON_START: ${BOOTSTRAP_INDEX_ON_START:-0}
     ports:
-      - "8000:8000"
+      - "${HELPCENTRE_API_HOST_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "./deploy/scripts/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     restart: unless-stopped
 
 volumes:
   postgres_helpcentre_local_data:
-
