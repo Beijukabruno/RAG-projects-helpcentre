@@ -53,7 +53,7 @@ Required GitHub secrets:
 `HELPCENTRE_IMAGE` automatically for the exact image tag it just built.
 
 
-The workflow builds the image, starts a smoke-test container, pushes the image,
-copies the compose file to the VM, writes `.env` on the VM from
-`ENV_FILE_CONTENTS`, starts Postgres, runs the indexer for `tb,cervical_cancer`,
-then starts the API.
+The workflow builds and pushes the image, copies the compose file to the VM,
+writes `.env` on the VM from `ENV_FILE_CONTENTS`, starts Postgres, runs the
+indexer for `tb,cervical_cancer`, starts the API, then confirms the deployed
+service responds on `/health` before completing.

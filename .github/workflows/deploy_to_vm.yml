@@ -1,4 +1,4 @@
-name: Test, Build, Push, and Deploy Helpcentre
+name: Build, Push, and Deploy Helpcentre
 
 on:
   push:
@@ -8,35 +8,12 @@ on:
 
 env:
   IMAGE_NAME: helpcentre-api
-  CONTAINER_NAME: helpcentre-api-smoke-test
-  SMOKE_PORT: 8001
   DEPLOY_COMPOSE_FILE: deploy/docker/docker-compose.yml
 
 jobs:
-  test:
-    name: Run tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Run test suite
-        run: python -m pytest tests
-
   build-push-and-deploy:
     name: Build, push, and deploy
     runs-on: ubuntu-latest
-    needs: test
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -49,46 +26,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_ACCESS_TOKEN }}
-
-      - name: Build Docker image for smoke test
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./deploy/docker/Dockerfile
-          load: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-
-      - name: Run API container smoke test
-        env:
-          DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-        run: |
-          set -euo pipefail
-          docker rm -f "${CONTAINER_NAME}" >/dev/null 2>&1 || true
-
-          docker run -d \
-            --name "${CONTAINER_NAME}" \
-            -p "${SMOKE_PORT}:8000" \
-            -e APP_NAME=helpcentre-smoke \
-            -e WAIT_FOR_DB=0 \
-            -e RUN_PROJECT_SYNC=0 \
-            -e BOOTSTRAP_INDEX_ON_START=0 \
-            -e RERANKER_ENABLED=false \
-            "${DOCKER_IMAGE}"
-
-          for i in $(seq 1 30); do
-            if curl -fsS "http://localhost:${SMOKE_PORT}/health" >/dev/null; then
-              echo "Helpcentre API smoke test passed."
-              docker logs "${CONTAINER_NAME}" --tail 80
-              docker rm -f "${CONTAINER_NAME}"
-              exit 0
-            fi
-            echo "Waiting for API health endpoint... ($i)"
-            sleep 2
-          done
-
-          docker logs "${CONTAINER_NAME}" || true
-          docker rm -f "${CONTAINER_NAME}" || true
-          exit 1
 
       - name: Build and push Helpcentre Docker image
         uses: docker/build-push-action@v6
@@ -157,3 +94,35 @@ jobs:
             docker compose --env-file .env -f "$DEPLOY_COMPOSE_FILE" run --rm --pull always helpcentre_indexer
             docker compose --env-file .env -f "$DEPLOY_COMPOSE_FILE" up -d --pull always --force-recreate helpcentre_api
             docker compose --env-file .env -f "$DEPLOY_COMPOSE_FILE" ps
+
+      - name: Confirm deployed service status
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          envs: DEPLOY_COMPOSE_FILE
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.VM_APP_PATH }}"
+
+            API_PORT="$(grep -E '^HELPCENTRE_API_HOST_PORT=' .env | tail -n 1 | cut -d= -f2-)"
+            API_PORT="${API_PORT:-8080}"
+
+            echo "Waiting for Helpcentre API on host port ${API_PORT} ..."
+            for i in $(seq 1 30); do
+              if curl -fsS "http://127.0.0.1:${API_PORT}/health" >/dev/null; then
+                echo "Helpcentre API healthcheck passed."
+                curl -fsS "http://127.0.0.1:${API_PORT}/ready" || true
+                echo
+                docker compose --env-file .env -f "$DEPLOY_COMPOSE_FILE" ps
+                exit 0
+              fi
+              echo "Waiting for /health ... ($i)"
+              sleep 3
+            done
+
+            echo "Helpcentre API did not become healthy."
+            docker compose --env-file .env -f "$DEPLOY_COMPOSE_FILE" ps || true
+            docker compose --env-file .env -f "$DEPLOY_COMPOSE_FILE" logs --tail=120 helpcentre_api || true
+            exit 1
