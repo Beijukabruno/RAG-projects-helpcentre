@@ -41,3 +41,8 @@ chunks.json
 .idea
 .junie
 .sixth
+
+deploy/env.production.example.txt
+.env.sample
+.env*deploy/env.production.example.txt
+env*
