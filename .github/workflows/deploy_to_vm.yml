@@ -5,10 +5,47 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      run_indexer:
+        description: "Run the knowledge-base chunking/indexing job after deploying the API"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      index_projects:
+        description: "Comma-separated projects to index when run_indexer=true"
+        required: false
+        default: "tb,cervical_cancer"
+      force_rechunk:
+        description: "Rebuild chunk JSON files before indexing instead of using existing generated files"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      chunking_strategy:
+        description: "Chunking strategy to use when chunks are missing or force_rechunk=true"
+        required: false
+        default: "recursive"
+        type: choice
+        options:
+          - "recursive"
+          - "semantic"
+      index_batch_size:
+        description: "Embedding/indexing batch size"
+        required: false
+        default: "64"
 
 env:
   IMAGE_NAME: helpcentre-api
   DEPLOY_COMPOSE_FILE: deploy/docker/docker-compose.yml
+
+concurrency:
+  group: helpcentre-deploy
+  cancel-in-progress: false
 
 jobs:
   build-push-and-deploy:
@@ -89,11 +126,9 @@ jobs:
             set -euo pipefail
             cd "${{ secrets.VM_APP_PATH }}"
             docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" -p "${{ secrets.DOCKERHUB_ACCESS_TOKEN }}"
-            docker compose --env-file .env -f "$DEPLOY_COMPOSE_FILE" pull
-            docker compose --env-file .env -f "$DEPLOY_COMPOSE_FILE" down --remove-orphans
-            docker compose --env-file .env -f "$DEPLOY_COMPOSE_FILE" up -d --pull always --force-recreate helpcentre_postgres
-            docker compose --env-file .env -f "$DEPLOY_COMPOSE_FILE" run --rm --pull always helpcentre_indexer
-            docker compose --env-file .env -f "$DEPLOY_COMPOSE_FILE" up -d --pull always --force-recreate helpcentre_api
+            docker compose --env-file .env -f "$DEPLOY_COMPOSE_FILE" pull helpcentre_api
+            docker compose --env-file .env -f "$DEPLOY_COMPOSE_FILE" up -d --remove-orphans helpcentre_postgres
+            docker compose --env-file .env -f "$DEPLOY_COMPOSE_FILE" up -d --force-recreate helpcentre_api
             docker compose --env-file .env -f "$DEPLOY_COMPOSE_FILE" ps
 
       - name: Confirm deployed service status
@@ -127,3 +162,28 @@ jobs:
             docker compose --env-file .env -f "$DEPLOY_COMPOSE_FILE" ps || true
             docker compose --env-file .env -f "$DEPLOY_COMPOSE_FILE" logs --tail=120 helpcentre_api || true
             exit 1
+
+      - name: Run knowledge-base indexer
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_indexer == 'true' }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          envs: DEPLOY_COMPOSE_FILE
+          command_timeout: 180m
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.VM_APP_PATH }}"
+
+            INDEX_PROJECTS="${{ inputs.index_projects }}"
+            FORCE_RECHUNK="${{ inputs.force_rechunk == 'true' && '1' || '0' }}"
+            CHUNKING_STRATEGY="${{ inputs.chunking_strategy }}"
+            BATCH_SIZE="${{ inputs.index_batch_size }}"
+
+            docker compose --env-file .env -f "$DEPLOY_COMPOSE_FILE" run --rm --pull always \
+              -e INDEX_PROJECTS="$INDEX_PROJECTS" \
+              -e FORCE_RECHUNK="$FORCE_RECHUNK" \
+              -e CHUNKING_STRATEGY="$CHUNKING_STRATEGY" \
+              -e BATCH_SIZE="$BATCH_SIZE" \
+              helpcentre_indexer

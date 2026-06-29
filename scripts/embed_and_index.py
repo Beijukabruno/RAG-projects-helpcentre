@@ -8,6 +8,7 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 import argparse
+import hashlib
 import json
 
 from sqlalchemy import text as sql_text
@@ -43,6 +44,75 @@ def _vector_to_pg_literal(vector):
     return "[" + ",".join(f"{float(v):.8f}" for v in vector) + "]"
 
 
+def _text_hash(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _insert_embeddings(project_id: str, audience: str, entries: list[dict]) -> None:
+    if not entries:
+        return
+
+    with db_session_context() as db:
+        if db is None:
+            raise RuntimeError("Database is unavailable; cannot index embeddings.")
+
+        params = []
+        for entry in entries:
+            meta = entry["meta"]
+            params.append(
+                {
+                    "chunk_id": entry["id"],
+                    "project_id": project_id,
+                    "audience": audience,
+                    "source_file": meta.get("source_file", ""),
+                    "source_name": meta.get("source_name", ""),
+                    "source_url": meta.get("source_url", ""),
+                    "chunk_text": entry["text"],
+                    "embedding_model": MODEL_NAME,
+                    "embedding": entry["embedding"],
+                }
+            )
+
+        db.execute(
+            sql_text(
+                """
+                INSERT INTO knowledge_chunk_embedding (
+                    chunk_id,
+                    project_id,
+                    audience,
+                    source_file,
+                    source_name,
+                    source_url,
+                    chunk_text,
+                    embedding_model,
+                    embedding
+                )
+                VALUES (
+                    :chunk_id,
+                    :project_id,
+                    :audience,
+                    :source_file,
+                    :source_name,
+                    :source_url,
+                    :chunk_text,
+                    :embedding_model,
+                    CAST(:embedding AS vector)
+                )
+                ON CONFLICT (chunk_id, project_id, audience)
+                DO UPDATE SET
+                    source_file = EXCLUDED.source_file,
+                    source_name = EXCLUDED.source_name,
+                    source_url = EXCLUDED.source_url,
+                    chunk_text = EXCLUDED.chunk_text,
+                    embedding_model = EXCLUDED.embedding_model,
+                    embedding = EXCLUDED.embedding
+                """
+            ),
+            params,
+        )
+        db.commit()
+
+
 def index_audience_collection(
     audience: str,
     chunks_path: Path,
@@ -59,7 +129,7 @@ def index_audience_collection(
         chunks = json.load(f)
     print(f"Loaded {len(chunks)} chunks for {audience} from {chunks_path}")
 
-    ids, texts, metadatas = [], [], []
+    entries = []
     for i, chunk in enumerate(chunks):
         chunk_body = chunk.get('text', '').strip()
         if not chunk_body:
@@ -74,45 +144,78 @@ def index_audience_collection(
             'source_url': chunk.get('source_url', ''),
         }
 
-        ids.append(cid)
-        texts.append(chunk_body)
-        metadatas.append(meta)
+        entries.append(
+            {
+                "id": cid,
+                "text": chunk_body,
+                "hash": _text_hash(chunk_body),
+                "meta": meta,
+            }
+        )
 
-    if resume and ids:
+    reused_count = 0
+    if resume and entries:
         with db_session_context() as db:
             if db is None:
                 raise RuntimeError("Database is unavailable; cannot load existing embeddings.")
-            existing_ids = set(
-                db.execute(
-                    sql_text(
-                        """
-                        SELECT chunk_id
-                        FROM knowledge_chunk_embedding
-                        WHERE project_id = :project_id
-                          AND audience = :audience
-                        """
-                    ),
-                    {"project_id": project_id, "audience": audience},
-                ).scalars()
-            )
+            existing_rows = db.execute(
+                sql_text(
+                    """
+                    SELECT
+                        chunk_id,
+                        encode(sha256(convert_to(chunk_text, 'UTF8')), 'hex') AS sha256_hash,
+                        embedding_model,
+                        embedding::text AS embedding
+                    FROM knowledge_chunk_embedding
+                    WHERE project_id = :project_id
+                      AND audience = :audience
+                    """
+                ),
+                {"project_id": project_id, "audience": audience},
+            ).mappings().all()
 
-        if existing_ids:
-            original_count = len(ids)
-            pending = [
-                (cid, chunk_text, meta)
-                for cid, chunk_text, meta in zip(ids, texts, metadatas)
-                if cid not in existing_ids
-            ]
-            ids = [cid for cid, _, _ in pending]
-            texts = [chunk_text for _, chunk_text, _ in pending]
-            metadatas = [meta for _, _, meta in pending]
-            print(f"Resume enabled: skipping {original_count - len(ids)} existing chunks for {audience}.")
+        existing_by_id = {row["chunk_id"]: row for row in existing_rows}
+        vector_by_hash = {
+            row["sha256_hash"]: row["embedding"]
+            for row in existing_rows
+            if row["embedding_model"] == MODEL_NAME and row["sha256_hash"]
+        }
 
+        pending = []
+        reusable = []
+        for entry in entries:
+            existing = existing_by_id.get(entry["id"])
+            if (
+                existing
+                and existing["embedding_model"] == MODEL_NAME
+                and existing["sha256_hash"] == entry["hash"]
+            ):
+                continue
+
+            reusable_embedding = vector_by_hash.get(entry["hash"])
+            if reusable_embedding:
+                entry["embedding"] = reusable_embedding
+                reusable.append(entry)
+                continue
+
+            pending.append(entry)
+
+        skipped_count = len(entries) - len(pending) - len(reusable)
+        if reusable:
+            _insert_embeddings(project_id, audience, reusable)
+            reused_count = len(reusable)
+        entries = pending
+
+        if skipped_count:
+            print(f"Resume enabled: skipping {skipped_count} unchanged chunks for {audience}.")
+        if reused_count:
+            print(f"Resume enabled: reused {reused_count} embeddings by content hash for {audience}.")
+
+    texts = [entry["text"] for entry in entries]
     print(f"Indexing {len(texts)} chunks for {audience} in batches of {BATCH_SIZE}...")
-    for start in tqdm(range(0, len(texts), BATCH_SIZE)):
-        batch_texts = texts[start:start + BATCH_SIZE]
-        batch_ids = ids[start:start + BATCH_SIZE]
-        batch_metas = metadatas[start:start + BATCH_SIZE]
+    for start in tqdm(range(0, len(entries), BATCH_SIZE)):
+        batch_entries = entries[start:start + BATCH_SIZE]
+        batch_texts = [entry["text"] for entry in batch_entries]
         emb_list = embed_texts(batch_texts, model_name=MODEL_NAME, batch_size=min(BATCH_SIZE, len(batch_texts)))
         if len(emb_list) != len(batch_texts):
             raise RuntimeError(
@@ -121,59 +224,11 @@ def index_audience_collection(
                 f"requested {len(batch_texts)}, received {len(emb_list)}."
             )
 
-        with db_session_context() as db:
-            if db is None:
-                raise RuntimeError("Database is unavailable; cannot index embeddings.")
-
-            for cid, chunk_text, meta, vector in zip(batch_ids, batch_texts, batch_metas, emb_list):
-                db.execute(
-                    sql_text(
-                        """
-                        INSERT INTO knowledge_chunk_embedding (
-                            chunk_id,
-                            project_id,
-                            audience,
-                            source_file,
-                            source_name,
-                            source_url,
-                            chunk_text,
-                            embedding_model,
-                            embedding
-                        )
-                        VALUES (
-                            :chunk_id,
-                            :project_id,
-                            :audience,
-                            :source_file,
-                            :source_name,
-                            :source_url,
-                            :chunk_text,
-                            :embedding_model,
-                            CAST(:embedding AS vector)
-                        )
-                        ON CONFLICT (chunk_id, project_id, audience)
-                        DO UPDATE SET
-                            source_file = EXCLUDED.source_file,
-                            source_name = EXCLUDED.source_name,
-                            source_url = EXCLUDED.source_url,
-                            chunk_text = EXCLUDED.chunk_text,
-                            embedding_model = EXCLUDED.embedding_model,
-                            embedding = EXCLUDED.embedding
-                        """
-                    ),
-                    {
-                        "chunk_id": cid,
-                        "project_id": project_id,
-                        "audience": audience,
-                        "source_file": meta.get("source_file", ""),
-                        "source_name": meta.get("source_name", ""),
-                        "source_url": meta.get("source_url", ""),
-                        "chunk_text": chunk_text,
-                        "embedding_model": MODEL_NAME,
-                        "embedding": _vector_to_pg_literal(vector),
-                    },
-                )
-            db.commit()
+        rows = []
+        for entry, vector in zip(batch_entries, emb_list):
+            entry["embedding"] = _vector_to_pg_literal(vector)
+            rows.append(entry)
+        _insert_embeddings(project_id, audience, rows)
 
     with db_session_context() as db:
         if db is None:

@@ -12,6 +12,7 @@ RUN_PROJECT_SYNC=${RUN_PROJECT_SYNC:-1}
 BOOTSTRAP_INDEX_ON_START=${BOOTSTRAP_INDEX_ON_START:-0}
 INDEX_PROJECTS=${INDEX_PROJECTS:-tb,cervical_cancer}
 CHUNKING_STRATEGY=${CHUNKING_STRATEGY:-semantic}
+FORCE_RECHUNK=${FORCE_RECHUNK:-0}
 
 log() {
   echo "[$APP_NAME] $*"
@@ -54,8 +55,13 @@ sync_projects() {
 index_projects() {
   log "Building chunks and pgvector indexes for projects: $INDEX_PROJECTS"
   for PROJECT_ID in $(echo "$INDEX_PROJECTS" | tr ',' ' '); do
-    log "Chunking project=$PROJECT_ID strategy=$CHUNKING_STRATEGY"
-    python scripts/chunk_markdown.py --project "$PROJECT_ID" --chunking-strategy "$CHUNKING_STRATEGY"
+    if [ "$FORCE_RECHUNK" = "1" ]; then
+      log "Chunking project=$PROJECT_ID strategy=$CHUNKING_STRATEGY"
+      python scripts/chunk_markdown.py --project "$PROJECT_ID" --chunking-strategy "$CHUNKING_STRATEGY"
+    else
+      log "Using existing chunk files for project=$PROJECT_ID when present. Set FORCE_RECHUNK=1 to rebuild them."
+      python scripts/chunk_markdown.py --project "$PROJECT_ID" --chunking-strategy "$CHUNKING_STRATEGY" --skip-existing
+    fi
 
     log "Indexing project=$PROJECT_ID"
     python scripts/embed_and_index.py --project "$PROJECT_ID" --resume

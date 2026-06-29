@@ -22,16 +22,14 @@ import csv
 import json
 
 from app.core.config import BASE_DIR, DATA_DIR
-from app.core.embeddings import embed_query
+from app.core.config import BATCH_SIZE
+from app.core.embeddings import embed_query, embed_texts
 from app.core.project_manager import project_manager
 
 
 class GeminiLangChainEmbeddings:
     def embed_documents(self, texts):
-        vectors = []
-        for text in texts:
-            vectors.append(embed_query(text))
-        return vectors
+        return embed_texts(list(texts), batch_size=BATCH_SIZE)
 
     def embed_query(self, text):
         return embed_query(text)
@@ -79,7 +77,7 @@ def _build_splitter(strategy: str):
     )
 
 
-def chunk_markdown_file(file_path: Path, md_sources: dict, strategy: str) -> list:
+def chunk_markdown_file(file_path: Path, md_sources: dict, text_splitter) -> list:
 
     with file_path.open(encoding='utf-8') as f:
         content = f.read().strip()
@@ -88,7 +86,6 @@ def chunk_markdown_file(file_path: Path, md_sources: dict, strategy: str) -> lis
     source_name = meta.get("source_name", "")
     source_url = meta.get("source_url", "")
 
-    text_splitter = _build_splitter(strategy)
     chunks = []
     for chunk in text_splitter.create_documents([content]):
         chunks.append({
@@ -101,9 +98,10 @@ def chunk_markdown_file(file_path: Path, md_sources: dict, strategy: str) -> lis
 
 def chunk_all_markdown(folder: Path, csv_path: Path, output_path: Path, strategy: str):
     md_sources = load_md_sources(csv_path)
+    text_splitter = _build_splitter(strategy)
     all_chunks = []
     for p in sorted(folder.glob('*.md')):
-        chunks = chunk_markdown_file(p, md_sources, strategy)
+        chunks = chunk_markdown_file(p, md_sources, text_splitter)
         all_chunks.extend(chunks)
         print(f"Chunked: {p.name} ({len(chunks)} chunks)")
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -154,6 +152,11 @@ def main():
         choices=["semantic", "recursive"],
         help="Chunking strategy to use (default: semantic)",
     )
+    parser.add_argument(
+        "--skip-existing",
+        action="store_true",
+        help="Do not rebuild an audience chunk file when it already exists.",
+    )
     args = parser.parse_args()
 
     kb_config = build_project_kb_config(args.project)
@@ -165,6 +168,10 @@ def main():
 
         if not folder.exists():
             raise FileNotFoundError(f"Knowledge base folder not found for {audience}: {folder}")
+
+        if args.skip_existing and output_path.exists():
+            print(f"[SKIP] Existing chunks found for project: {args.project}, audience: {audience}: {output_path}")
+            continue
 
         print(
             f"\n=== Building chunks for project: {args.project}, audience: {audience}, strategy: {args.chunking_strategy} ==="

@@ -54,6 +54,24 @@ Required GitHub secrets:
 
 
 The workflow builds and pushes the image, copies the compose file to the VM,
-writes `.env` on the VM from `ENV_FILE_CONTENTS`, starts Postgres, runs the
-indexer for `tb,cervical_cancer`, starts the API, then confirms the deployed
+writes `.env` on the VM from `ENV_FILE_CONTENTS`, starts Postgres if it is not
+already running, starts the API with the new image, then confirms the deployed
 service responds on `/health` before completing.
+
+Knowledge-base indexing is intentionally separate from the normal deployment
+path. On a manual workflow run, set `run_indexer=true` to run the one-shot
+indexer after the API is already deployed and healthy. Use `index_projects` to
+limit the job to a subset such as `tb`, and use `force_rechunk=true` only when
+the markdown sources changed and chunk JSON files must be rebuilt.
+
+By default, the indexer uses existing generated chunk files in the image and
+only creates missing chunk files. This avoids semantic chunking API calls during
+routine deploys. The embedding step runs with resume enabled, skipping
+unchanged chunks and reusing existing embeddings when identical chunk text is
+seen under a new chunk id.
+
+For large knowledge bases, prefer `chunking_strategy=recursive` when forcing a
+rechunk. Semantic chunking calls the embedding model during splitting, so it is
+slower and should be reserved for deliberate rebuilds where the quality tradeoff
+is worth the extra API time. The manual workflow also exposes `index_batch_size`
+to tune embedding batch size without changing the image.
