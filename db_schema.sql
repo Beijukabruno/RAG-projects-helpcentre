@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS projects (
     domain_url TEXT,
     enabled BOOLEAN NOT NULL DEFAULT TRUE,
     status VARCHAR(32) NOT NULL DEFAULT 'active',
+    domain_owner VARCHAR(255),
+    contact_email VARCHAR(255),
     config_json JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP

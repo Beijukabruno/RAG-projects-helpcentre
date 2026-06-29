@@ -29,6 +29,37 @@ def _apply_sql_schema(connection) -> None:
         connection.execute(text(statement))
 
 
+def _apply_compatibility_migrations(connection) -> None:
+    """Keep older persistent databases compatible with the current ORM models."""
+    statements = [
+        "ALTER TABLE projects ADD COLUMN IF NOT EXISTS domain_url TEXT",
+        "ALTER TABLE projects ADD COLUMN IF NOT EXISTS status VARCHAR(32) NOT NULL DEFAULT 'active'",
+        "ALTER TABLE projects ADD COLUMN IF NOT EXISTS domain_owner VARCHAR(255)",
+        "ALTER TABLE projects ADD COLUMN IF NOT EXISTS contact_email VARCHAR(255)",
+        "ALTER TABLE projects ADD COLUMN IF NOT EXISTS config_json JSONB",
+        "ALTER TABLE projects ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP",
+        "ALTER TABLE projects ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP",
+        "ALTER TABLE project_audiences ADD COLUMN IF NOT EXISTS enabled BOOLEAN NOT NULL DEFAULT TRUE",
+        "ALTER TABLE project_audiences ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP",
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1
+                FROM pg_constraint
+                WHERE conname = 'project_audiences_project_id_audience_key'
+            ) THEN
+                ALTER TABLE project_audiences
+                ADD CONSTRAINT project_audiences_project_id_audience_key
+                UNIQUE (project_id, audience);
+            END IF;
+        END $$;
+        """,
+    ]
+    for statement in statements:
+        connection.execute(text(statement))
+
+
 def initialize_database() -> bool:
     global _engine, _session_factory, _db_available, _last_unavailable_reason
 
@@ -39,6 +70,7 @@ def initialize_database() -> bool:
             connection.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto"))
             connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
             _apply_sql_schema(connection)
+            _apply_compatibility_migrations(connection)
         Base.metadata.create_all(_engine)
         _session_factory = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
         _db_available = True
