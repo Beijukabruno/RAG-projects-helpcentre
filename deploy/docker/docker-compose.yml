@@ -47,7 +47,7 @@ services:
       helpcentre_postgres:
         condition: service_healthy
     ports:
-      - "${HELPCENTRE_API_HOST_PORT:-8080}:8000"
+      - "${HELPCENTRE_API_HOST_PORT:-8025}:8000"
     env_file:
       - ../../.env
     environment:
