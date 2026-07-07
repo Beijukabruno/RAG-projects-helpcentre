@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../lib/api';
 import { 
   History, 
   Search, 
@@ -49,7 +49,7 @@ const AuditLogs = () => {
       const url = projectId 
         ? `/admin/projects/${projectId}/audit-logs` 
         : '/admin/audit-logs';
-      const resp = await axios.get(url);
+      const resp = await api.get(url);
       setLogs(resp.data.logs);
     } catch (err) {
       console.error('Failed to fetch audit logs', err);
@@ -61,7 +61,7 @@ const AuditLogs = () => {
   const fetchToxicity = async () => {
     setLoading(true);
     try {
-      const resp = await axios.get('/admin/toxicity-feed');
+      const resp = await api.get('/admin/toxicity-feed');
       setToxicMsgs(resp.data.messages);
     } catch (err) {
       console.error('Failed to fetch toxicity feed', err);

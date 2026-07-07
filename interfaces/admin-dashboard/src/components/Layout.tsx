@@ -9,7 +9,8 @@ import {
   LogOut,
   ChevronRight,
   ShieldCheck,
-  MessageSquare
+  MessageSquare,
+  TerminalSquare
 } from 'lucide-react';
 
 const Layout = () => {
@@ -20,7 +21,8 @@ const Layout = () => {
   const isSuperAdmin = user?.roles?.includes('super_admin');
 
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
+    { path: '/', label: 'Project Center', icon: <LayoutDashboard size={20} /> },
+    { path: '/console', label: 'API Console', icon: <TerminalSquare size={20} /> },
     { path: '/projects', label: 'Projects', icon: <FolderKanban size={20} /> },
     { path: '/history', label: 'Chat History', icon: <MessageSquare size={20} /> },
     ...(isSuperAdmin ? [{ path: '/users', label: 'User Management', icon: <UsersIcon size={20} /> }] : []),

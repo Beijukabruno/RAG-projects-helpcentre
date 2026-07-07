@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../lib/api';
 import { Link } from 'react-router-dom';
 import { 
   Plus, 
@@ -48,7 +48,7 @@ const Projects = () => {
 
   const fetchProjects = async () => {
     try {
-      const resp = await axios.get('/admin/projects');
+      const resp = await api.get('/admin/projects');
       setProjects(resp.data.projects);
     } catch (err) {
       console.error('Failed to fetch projects', err);
@@ -64,7 +64,7 @@ const Projects = () => {
         ...formData,
         audiences: formData.audiences.split(',').map(s => s.trim())
       };
-      await axios.post('/admin/projects', payload);
+      await api.post('/admin/projects', payload);
       setShowCreateModal(false);
       fetchProjects();
       setFormData({ id: '', name: '', description: '', domain_owner: '', contact_email: '', audiences: 'general, clinicians' });
@@ -78,7 +78,7 @@ const Projects = () => {
     e.preventDefault();
     if (!selectedProject) return;
     try {
-      await axios.patch(`/admin/projects/${selectedProject.id}`, selectedProject);
+      await api.patch(`/admin/projects/${selectedProject.id}`, selectedProject);
       setShowSettingsModal(false);
       fetchProjects();
     } catch (err: any) {
@@ -89,7 +89,7 @@ const Projects = () => {
   const handleDelete = async (id: string) => {
     if (!window.confirm(`Are you sure you want to delete project "${id}"? This cannot be undone.`)) return;
     try {
-      await axios.delete(`/admin/projects/${id}`);
+      await api.delete(`/admin/projects/${id}`);
       fetchProjects();
     } catch (err) {
       alert('Failed to delete project');

@@ -11,6 +11,7 @@ class ProjectManager:
     def __init__(self, config_file: str = "config/projects.yaml"):
         self.config_file = Path(config_file)
         self.projects = self._load_projects_from_yaml()
+        self.assistant = self._load_assistant_from_yaml()
         self._db_projects_cache = {}
 
     def _load_projects_from_yaml(self) -> Dict:
@@ -23,6 +24,18 @@ class ProjectManager:
             return data.get("projects", {})
         except Exception as e:
             logger.error(f"Failed to load projects from YAML: {e}")
+            return {}
+
+    def _load_assistant_from_yaml(self) -> Dict:
+        if not self.config_file.exists():
+            return {}
+        try:
+            with self.config_file.open("r", encoding="utf-8") as fh:
+                data = yaml.safe_load(fh)
+            assistant = data.get("assistant", {})
+            return assistant if isinstance(assistant, dict) else {}
+        except Exception as e:
+            logger.error(f"Failed to load assistant prompt config from YAML: {e}")
             return {}
 
     def refresh_from_db(self) -> None:
@@ -95,6 +108,9 @@ class ProjectManager:
 
     def get_llm_config(self, project_id: str) -> Dict:
         return self.get_project(project_id).get("llm", {})
+
+    def get_assistant_config(self) -> Dict:
+        return self.assistant
 
     def get_system_role(self, project_id: str) -> str:
         return self.get_llm_config(project_id).get(

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../lib/api';
 import { 
   UserPlus, 
   Shield, 
@@ -49,8 +49,8 @@ const Users = () => {
     setLoading(true);
     try {
       const [uResp, pResp] = await Promise.all([
-        axios.get('/admin/users'),
-        axios.get('/admin/projects')
+        api.get('/admin/users'),
+        api.get('/admin/projects')
       ]);
       setUsers(uResp.data.users);
       setProjects(pResp.data.projects);
@@ -64,7 +64,7 @@ const Users = () => {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post('/admin/users', formData);
+      await api.post('/admin/users', formData);
       setShowCreateModal(false);
       fetchInitialData();
       setFormData({ email: '', password: '', full_name: '', role: 'project_admin' });
@@ -76,9 +76,9 @@ const Users = () => {
   const toggleMembership = async (userId: string, projectId: string, isMember: boolean) => {
     try {
       if (isMember) {
-        await axios.delete(`/admin/projects/${projectId}/admins/${userId}`);
+        await api.delete(`/admin/projects/${projectId}/admins/${userId}`);
       } else {
-        await axios.post(`/admin/projects/${projectId}/admins`, { user_id: userId });
+        await api.post(`/admin/projects/${projectId}/admins`, { user_id: userId });
       }
       fetchInitialData();
     } catch (err) {

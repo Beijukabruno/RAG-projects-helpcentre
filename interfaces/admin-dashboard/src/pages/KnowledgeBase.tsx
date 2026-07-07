@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../lib/api';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Upload, 
@@ -51,7 +51,7 @@ const KnowledgeBase = () => {
   const fetchAssets = async () => {
     setLoading(true);
     try {
-      const resp = await axios.get(`/admin/projects/${projectId}/knowledge-base?audience=${audience}`);
+      const resp = await api.get(`/admin/projects/${projectId}/knowledge-base?audience=${audience}`);
       setAssets(resp.data.assets);
     } catch (err) {
       console.error('Failed to fetch KB assets', err);
@@ -72,7 +72,7 @@ const KnowledgeBase = () => {
     if (sourceUrl) formData.append('source_url', sourceUrl);
 
     try {
-      await axios.post(`/admin/projects/${projectId}/knowledge-base`, formData);
+      await api.post(`/admin/projects/${projectId}/knowledge-base`, formData);
       setFile(null);
       setSourceName('');
       setSourceUrl('');
@@ -86,7 +86,7 @@ const KnowledgeBase = () => {
 
   const activateAsset = async (assetId: string) => {
     try {
-      const resp = await axios.post(`/admin/projects/${projectId}/knowledge-base/${assetId}/activate?audience=${audience}`);
+      const resp = await api.post(`/admin/projects/${projectId}/knowledge-base/${assetId}/activate?audience=${audience}`);
       alert(`Asset activated! Chunks created: ${resp.data.chunk_count}. Retrieval check: ${resp.data.verification?.retrieval_ok ? 'PASSED' : 'FAILED'}`);
       fetchAssets();
     } catch (err: any) {
@@ -97,7 +97,7 @@ const KnowledgeBase = () => {
   const deleteAsset = async (fileName: string) => {
     if (!window.confirm(`Delete ${fileName}? This will also remove its indexed chunks.`)) return;
     try {
-      await axios.delete(`/admin/projects/${projectId}/knowledge-base/${fileName}?audience=${audience}`);
+      await api.delete(`/admin/projects/${projectId}/knowledge-base/${fileName}?audience=${audience}`);
       fetchAssets();
     } catch (err) {
       alert('Failed to delete asset');
@@ -110,7 +110,7 @@ const KnowledgeBase = () => {
     setSearching(true);
     try {
       // Use the public search endpoint to verify indexing
-      const resp = await axios.post(`/api/search/${audience}`, { 
+      const resp = await api.post(`/api/search/${audience}`, { 
         query: searchQuery, 
         k: 3,
         project_id: projectId 

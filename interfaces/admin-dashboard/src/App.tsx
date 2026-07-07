@@ -7,6 +7,7 @@ import Users from './pages/Users';
 import KnowledgeBase from './pages/KnowledgeBase';
 import AuditLogs from './pages/AuditLogs';
 import ChatHistory from './pages/ChatHistory';
+import ApiConsole from './pages/ApiConsole';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -24,6 +25,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/console" element={<ApiConsole />} />
           <Route path="/" element={
             <ProtectedRoute>
               <Layout />
