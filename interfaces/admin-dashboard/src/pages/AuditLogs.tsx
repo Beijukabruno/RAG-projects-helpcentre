@@ -30,6 +30,11 @@ interface ToxicMessage {
   created_at: string;
 }
 
+interface ProjectOption {
+  id: string;
+  name: string;
+}
+
 const AuditLogs = () => {
   const [activeTab, setActiveTab] = useState<'audit' | 'toxicity'>('audit');
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -37,6 +42,11 @@ const AuditLogs = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [projectId, setProjectId] = useState('');
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+
+  useEffect(() => {
+    void fetchProjects();
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'audit') fetchLogs();
@@ -67,6 +77,15 @@ const AuditLogs = () => {
       console.error('Failed to fetch toxicity feed', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchProjects = async () => {
+    try {
+      const resp = await api.get('/admin/projects');
+      setProjects((resp.data.projects || []).map((p: any) => ({ id: p.id, name: p.name })));
+    } catch (err) {
+      console.error('Failed to fetch projects for filter', err);
     }
   };
 
@@ -111,8 +130,9 @@ const AuditLogs = () => {
               <Filter size={16} />
               <select value={projectId} onChange={e => setProjectId(e.target.value)}>
                 <option value="">All Projects</option>
-                <option value="tb">TB</option>
-                <option value="cervical_cancer">Cervical Cancer</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
               </select>
             </div>
           </div>

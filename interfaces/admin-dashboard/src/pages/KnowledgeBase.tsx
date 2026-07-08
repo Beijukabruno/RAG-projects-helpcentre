@@ -183,8 +183,8 @@ const KnowledgeBase = () => {
               {searching ? <div className="searching">Querying index...</div> : 
                searchResults.map((res, i) => (
                 <div key={i} className="verify-item">
-                  <span className="res-file">{res.source_file}</span>
-                  <p className="res-text">"{res.markdown?.substring(0, 100)}..."</p>
+                    <span className="res-file">{res.source_name || res.source_file || 'Source'}</span>
+                    <p className="res-text">"{(res.full_text || '').substring(0, 140)}..."</p>
                 </div>
               ))}
               {!searching && searchQuery && searchResults.length === 0 && <div className="no-res">No chunks found.</div>}

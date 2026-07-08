@@ -3,6 +3,11 @@ import axios from 'axios';
 export const DEFAULT_API_BASE_URL = 'https://helpcentre-dsi-mdr.emergentai.ug';
 export const DOCS_URL = 'https://helpcentre-dsi-mdr.emergentai.ug/docs';
 
+const DEV_API_BASE_URL = 'http://localhost:8000';
+const resolvedBaseUrl =
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV ? DEV_API_BASE_URL : DEFAULT_API_BASE_URL);
+
 export type FeatureFlags = {
   guardrails_enabled: boolean;
   reranker_enabled: boolean;
@@ -10,7 +15,7 @@ export type FeatureFlags = {
 };
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL,
+  baseURL: resolvedBaseUrl,
 });
 
 api.interceptors.request.use((config) => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../lib/api';
 import { 
   MessageSquare, 
   Search, 
@@ -45,7 +45,7 @@ const ChatHistory = () => {
       const url = projectId 
         ? `/admin/projects/${projectId}/last-records?n=50` 
         : '/admin/last-records?n=50';
-      const resp = await axios.get(url);
+      const resp = await api.get(url);
       setRecords(resp.data.records);
     } catch (err) {
       console.error('Failed to fetch chat records', err);
@@ -125,10 +125,10 @@ const ChatHistory = () => {
                         record.sources.map((src, idx) => (
                           <div key={idx} className="source-item">
                             <div className="source-header">
-                              <strong>{src.header || 'Untitled Section'}</strong>
-                              <span>{src.source_file}</span>
+                              <strong>{src.source_name || src.source_file || 'Source'}</strong>
+                              <span>{src.doc_id || src.source_file || 'N/A'}</span>
                             </div>
-                            <p className="excerpt">"{src.excerpt}"</p>
+                            <p className="excerpt">"{(src.full_text || '').substring(0, 220)}..."</p>
                           </div>
                         ))
                       ) : (
