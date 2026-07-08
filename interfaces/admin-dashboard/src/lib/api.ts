@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 export const DEFAULT_API_BASE_URL = 'https://helpcentre-dsi-mdr.emergentai.ug';
-export const DOCS_URL = 'https://helpcentre-dsi-mdr.emergentai.ug/docs';
+export const DOCS_URL = 'http://0.0.0.0:8000/docs';
 
 const DEV_API_BASE_URL = 'http://localhost:8000';
 const resolvedBaseUrl =
