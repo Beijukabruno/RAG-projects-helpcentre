@@ -10,7 +10,7 @@ import {
   ChevronRight,
   ShieldCheck,
   MessageSquare,
-  TerminalSquare
+  UserCog
 } from 'lucide-react';
 
 const Layout = () => {
@@ -22,8 +22,8 @@ const Layout = () => {
 
   const navItems = [
     { path: '/', label: 'Project Center', icon: <LayoutDashboard size={20} /> },
-    { path: '/console', label: 'API Console', icon: <TerminalSquare size={20} /> },
     { path: '/projects', label: 'Projects', icon: <FolderKanban size={20} /> },
+    { path: '/project-admins', label: 'Project Admins', icon: <UserCog size={20} /> },
     { path: '/history', label: 'Chat History', icon: <MessageSquare size={20} /> },
     ...(isSuperAdmin ? [{ path: '/users', label: 'User Management', icon: <UsersIcon size={20} /> }] : []),
     { path: '/audit-logs', label: 'System Logs', icon: <History size={20} /> },

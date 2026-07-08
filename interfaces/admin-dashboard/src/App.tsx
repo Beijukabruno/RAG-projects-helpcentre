@@ -4,10 +4,10 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
 import Users from './pages/Users';
+import ProjectAdmins from './pages/ProjectAdmins';
 import KnowledgeBase from './pages/KnowledgeBase';
 import AuditLogs from './pages/AuditLogs';
 import ChatHistory from './pages/ChatHistory';
-import ApiConsole from './pages/ApiConsole';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -25,7 +25,6 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/console" element={<ApiConsole />} />
           <Route path="/" element={
             <ProtectedRoute>
               <Layout />
@@ -33,6 +32,7 @@ function App() {
           }>
             <Route index element={<Dashboard />} />
             <Route path="projects" element={<Projects />} />
+            <Route path="project-admins" element={<ProjectAdmins />} />
             <Route path="users" element={<Users />} />
             <Route path="projects/:projectId/kb" element={<KnowledgeBase />} />
             <Route path="audit-logs" element={<AuditLogs />} />

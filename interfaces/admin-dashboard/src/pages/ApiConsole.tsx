@@ -39,9 +39,12 @@ type ConsoleEndpoint = {
 };
 
 type ResultState = {
+  id: string;
+  group: ConsoleEndpoint['group'];
   title: string;
   method: HttpMethod;
   path: string;
+  auth: 'none' | 'bearer';
   status: number;
   elapsedMs: number;
   body: unknown;
@@ -221,9 +224,12 @@ const ApiConsole = () => {
       }
 
       const nextResult = {
+        id: endpoint.id,
+        group: endpoint.group,
         title: endpoint.title,
         method: endpoint.method,
         path: endpoint.path,
+        auth: endpoint.auth,
         status: response.status,
         elapsedMs: Math.round(performance.now() - startedAt),
         body: response.data,
@@ -233,9 +239,12 @@ const ApiConsole = () => {
       setMessage(endpoint.id === 'login' ? 'Login succeeded and token stored in the browser.' : `Loaded ${endpoint.title}.`);
     } catch (error: any) {
       const nextResult = {
+        id: endpoint.id,
+        group: endpoint.group,
         title: endpoint.title,
         method: endpoint.method,
         path: endpoint.path,
+        auth: endpoint.auth,
         status: error.response?.status || 0,
         elapsedMs: Math.round(performance.now() - startedAt),
         body: error.response?.data || { detail: error.message || 'Request failed' },
@@ -257,19 +266,285 @@ const ApiConsole = () => {
   };
 
   const authStatus = localStorage.getItem('admin_token') ? 'Authenticated' : 'Signed out';
+  const selectedRequestBody = selectedEndpoint.sampleBody ? JSON.stringify(selectedEndpoint.sampleBody, null, 2) : '';
+
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value);
+
+  const toDisplayText = (value: unknown, fallback = 'N/A'): string => {
+    if (typeof value === 'string') {
+      return value || fallback;
+    }
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+    return fallback;
+  };
+
+  const renderKeyValue = (label: string, value: React.ReactNode, accentClass?: string) => (
+    <div className={`kv-card ${accentClass || ''}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+
+  const renderResultDetails = () => {
+    if (!result) {
+      return (
+        <div className="empty-response">
+          <FileText size={36} />
+          <h3>Run an operation to see a structured response.</h3>
+          <p>Use the controls on the left to exercise the live admin API and inspect the actual payloads here.</p>
+        </div>
+      );
+    }
+
+    const data = result.body;
+    const isSuccess = result.status > 0 && result.status < 400;
+
+    if (result.id === 'login' && isRecord(data)) {
+      const user = isRecord(data.user) ? data.user : null;
+
+      return (
+        <div className="response-stack">
+          <div className={`response-banner ${isSuccess ? 'success' : 'error'}`}>
+            <CheckCircle2 size={18} />
+            <div>
+              <strong>{isSuccess ? 'Login succeeded' : 'Login failed'}</strong>
+              <p>The console stored the bearer token in the browser and returned the signed-in user profile.</p>
+            </div>
+          </div>
+
+          <div className="stats-grid">
+            {renderKeyValue('Token type', String(data.token_type || 'bearer'))}
+            {renderKeyValue('Token preview', typeof data.access_token === 'string' ? `${data.access_token.slice(0, 16)}…${data.access_token.slice(-8)}` : 'N/A')}
+            {renderKeyValue('User role', Array.isArray(user?.roles) ? user.roles.join(', ') : 'N/A')}
+            {renderKeyValue('Projects', Array.isArray(user?.project_ids) ? user.project_ids.length : 0)}
+          </div>
+
+          <div className="detail-grid">
+            <div className="detail-panel">
+              <h3>Signed-in user</h3>
+              <div className="detail-lines">
+                <div><span>Name</span><strong>{toDisplayText(user?.full_name)}</strong></div>
+                <div><span>Email</span><strong>{toDisplayText(user?.email)}</strong></div>
+                <div><span>Roles</span><strong>{Array.isArray(user?.roles) ? user.roles.join(', ') : 'N/A'}</strong></div>
+              </div>
+            </div>
+            <div className="detail-panel code-panel">
+              <h3>Raw response</h3>
+              <pre>{JSON.stringify(data, null, 2)}</pre>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (result.id === 'overview' && isRecord(data)) {
+      const health = isRecord(data.system_health) ? data.system_health : null;
+      const database = isRecord(health?.database) ? health.database : null;
+      const databaseAvailable = typeof database?.available === 'boolean' ? database.available : false;
+      return (
+        <div className="response-stack">
+          <div className="stats-grid">
+            {renderKeyValue('Projects', toDisplayText(data.total_projects))}
+            {renderKeyValue('Users', toDisplayText(data.total_users))}
+            {renderKeyValue('Messages', toDisplayText(data.total_messages))}
+            {renderKeyValue('Toxic messages', toDisplayText(data.toxic_messages), 'warn')}
+          </div>
+          <div className="detail-grid">
+            <div className="detail-panel">
+              <h3>System health</h3>
+              <div className="detail-lines">
+                <div><span>Database</span><strong>{databaseAvailable ? 'Available' : 'Unavailable'}</strong></div>
+                <div><span>Reason</span><strong>{toDisplayText(database?.reason, 'None reported')}</strong></div>
+                <div><span>Last audit</span><strong>{toDisplayText(health?.last_audit, 'Not available')}</strong></div>
+              </div>
+            </div>
+            <div className="detail-panel code-panel">
+              <h3>Raw response</h3>
+              <pre>{JSON.stringify(data, null, 2)}</pre>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (result.id === 'projects' && isRecord(data)) {
+      const projects = Array.isArray(data.projects) ? data.projects : [];
+      return (
+        <div className="response-stack">
+          <div className="stats-grid">
+            {renderKeyValue('Projects returned', projects.length)}
+            {renderKeyValue('Response shape', 'projects[]')}
+            {renderKeyValue('Auth', result.auth === 'bearer' ? 'Bearer' : 'Public')}
+            {renderKeyValue('Latency', `${result.elapsedMs} ms`)}
+          </div>
+          <div className="list-panel">
+            {projects.map((project: any) => (
+              <div key={project.id} className="list-item card-item">
+                <div>
+                  <strong>{project.name || project.id}</strong>
+                  <p>{project.description || 'No description provided.'}</p>
+                </div>
+                <div className="pill-row">
+                  <span className="pill">{project.id}</span>
+                  <span className="pill">{project.enabled ? 'Enabled' : 'Disabled'}</span>
+                </div>
+              </div>
+            ))}
+            {projects.length === 0 && <div className="empty-inline">No projects were returned by the API.</div>}
+          </div>
+        </div>
+      );
+    }
+
+    if (result.id === 'users' && isRecord(data)) {
+      const users = Array.isArray(data.users) ? data.users : [];
+      return (
+        <div className="response-stack">
+          <div className="stats-grid">
+            {renderKeyValue('Users returned', users.length)}
+            {renderKeyValue('Role scope', 'Admin access')}
+            {renderKeyValue('Auth', result.auth === 'bearer' ? 'Bearer' : 'Public')}
+            {renderKeyValue('Latency', `${result.elapsedMs} ms`)}
+          </div>
+          <div className="list-panel">
+            {users.map((entry: any) => (
+              <div key={entry.id} className="list-item card-item">
+                <div>
+                  <strong>{entry.full_name || entry.email}</strong>
+                  <p>{entry.email}</p>
+                </div>
+                <div className="pill-row">
+                  <span className="pill">{Array.isArray(entry.roles) ? entry.roles.join(', ') : 'No roles'}</span>
+                  <span className="pill">{Array.isArray(entry.project_ids) ? `${entry.project_ids.length} projects` : '0 projects'}</span>
+                </div>
+              </div>
+            ))}
+            {users.length === 0 && <div className="empty-inline">No users were returned by the API.</div>}
+          </div>
+        </div>
+      );
+    }
+
+    if (result.id === 'audit' && isRecord(data)) {
+      const logs = Array.isArray(data.logs) ? data.logs : [];
+      return (
+        <div className="response-stack">
+          <div className="stats-grid">
+            {renderKeyValue('Log entries', logs.length)}
+            {renderKeyValue('Audience', 'Operational trace')}
+            {renderKeyValue('Auth', result.auth === 'bearer' ? 'Bearer' : 'Public')}
+            {renderKeyValue('Latency', `${result.elapsedMs} ms`)}
+          </div>
+          <div className="list-panel">
+            {logs.map((entry: any) => (
+              <div key={entry.id} className="list-item card-item">
+                <div>
+                  <strong>{entry.action}</strong>
+                  <p>{entry.actor_email} · {entry.entity_type || 'entity'}{entry.entity_id ? ` · ${entry.entity_id}` : ''}</p>
+                </div>
+                <div className="pill-row">
+                  <span className="pill">{entry.project_id || 'global'}</span>
+                  <span className="pill">{entry.created_at ? new Date(entry.created_at).toLocaleString() : 'No timestamp'}</span>
+                </div>
+              </div>
+            ))}
+            {logs.length === 0 && <div className="empty-inline">No audit logs were returned by the API.</div>}
+          </div>
+        </div>
+      );
+    }
+
+    if (result.id === 'toxicity' && isRecord(data)) {
+      const messages = Array.isArray(data.messages) ? data.messages : [];
+      return (
+        <div className="response-stack">
+          <div className="stats-grid">
+            {renderKeyValue('Flagged messages', messages.length)}
+            {renderKeyValue('Review mode', 'Guardrail output')}
+            {renderKeyValue('Auth', result.auth === 'bearer' ? 'Bearer' : 'Public')}
+            {renderKeyValue('Latency', `${result.elapsedMs} ms`)}
+          </div>
+          <div className="list-panel">
+            {messages.map((entry: any) => (
+              <div key={entry.id} className="list-item card-item toxicity-item">
+                <div>
+                  <strong>{entry.project_id}</strong>
+                  <p>{entry.message}</p>
+                </div>
+                <div className="pill-row">
+                  <span className="pill danger">Toxic</span>
+                  <span className="pill">{entry.created_at ? new Date(entry.created_at).toLocaleString() : 'No timestamp'}</span>
+                </div>
+                <pre>{JSON.stringify(entry.toxicity, null, 2)}</pre>
+              </div>
+            ))}
+            {messages.length === 0 && <div className="empty-inline">No toxicity alerts were returned by the API.</div>}
+          </div>
+        </div>
+      );
+    }
+
+    if (result.id === 'kb' && isRecord(data)) {
+      const sources = Array.isArray(data.sources) ? data.sources : [];
+      const assets = Array.isArray(data.assets) ? data.assets : [];
+      return (
+        <div className="response-stack">
+          <div className="stats-grid">
+            {renderKeyValue('Sources', sources.length)}
+            {renderKeyValue('Assets', assets.length)}
+            {renderKeyValue('Audience', selectedEndpoint.path.includes('clinicians') ? 'Clinicians' : 'General')}
+            {renderKeyValue('Latency', `${result.elapsedMs} ms`)}
+          </div>
+          <div className="detail-grid">
+            <div className="detail-panel">
+              <h3>Sources</h3>
+              <div className="list-panel compact">
+                {sources.map((source: any, index: number) => (
+                  <div key={`${source.source_name || 'source'}-${index}`} className="list-item card-item">
+                    <div>
+                      <strong>{source.source_name || 'Untitled source'}</strong>
+                      <p>{source.source_file || source.source_url || 'No file or URL provided.'}</p>
+                    </div>
+                  </div>
+                ))}
+                {sources.length === 0 && <div className="empty-inline">No sources were returned by the API.</div>}
+              </div>
+            </div>
+            <div className="detail-panel code-panel">
+              <h3>Assets payload</h3>
+              <pre>{JSON.stringify(assets, null, 2)}</pre>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="detail-grid">
+        <div className="detail-panel code-panel full-span">
+          <h3>Raw response</h3>
+          <pre>{JSON.stringify(data, null, 2)}</pre>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className="api-console">
-      <section className="hero">
-        <div className="hero-copy-block">
+    <div className="api-console-shell">
+      <section className="console-hero">
+        <div className="hero-copy-block glass-panel">
           <div className="eyebrow-row">
-            <span className="eyebrow">Deployed admin surface</span>
+            <span className="eyebrow">Admin operations studio</span>
             <span className="docs-pill"><Sparkles size={14} /> Live helpcentre</span>
           </div>
-          <h1>See what is deployed and operate it from one polished dashboard.</h1>
+          <h1>Operate the platform from a real control room, not a ping tester.</h1>
           <p className="hero-copy">
-            This is the admin workspace for the live helpcentre. It shows the deployed host, the current session state,
-            and the major operator areas: auth, platform inventory, knowledge base, and monitoring.
+            Sign in, inspect the deployed inventory, and run workflows that expose the actual payloads behind each
+            admin action. Each response is rendered as a readable operational summary, with raw JSON available only as
+            backup.
           </p>
 
           <div className="hero-actions">
@@ -279,7 +554,7 @@ const ApiConsole = () => {
             </button>
             <button className="secondary-button" onClick={copyDocs} type="button">
               <BookOpen size={16} />
-              Open docs link
+              Copy docs link
             </button>
           </div>
 
@@ -294,12 +569,12 @@ const ApiConsole = () => {
             </div>
             <div className="note">
               <span className="note-label">Docs</span>
-              <a href={DOCS_URL} target="_blank" rel="noreferrer">/docs</a>
+              <a href={DOCS_URL} target="_blank" rel="noreferrer">Open docs</a>
             </div>
           </div>
         </div>
 
-        <div className="hero-panel card-surface">
+        <div className="hero-panel glass-panel">
           <div className="panel-header">
             <div>
               <p className="panel-kicker">Current identity</p>
@@ -321,18 +596,18 @@ const ApiConsole = () => {
             </div>
             <div className="profile-chip muted">
               <BadgeCheck size={16} />
-              <span>Operator console designed for browser use</span>
+              <span>Operator workspace for live admin tasks</span>
             </div>
           </div>
 
           <div className="mini-grid">
             <div className="mini-card">
-              <span>Live state</span>
-              <strong>Health + readiness</strong>
+              <span>Surface</span>
+              <strong>Auth · Platform · Monitoring</strong>
             </div>
             <div className="mini-card">
-              <span>Workflows</span>
-              <strong>Login + inspection</strong>
+              <span>Response mode</span>
+              <strong>Structured summaries</strong>
             </div>
           </div>
         </div>
@@ -340,9 +615,9 @@ const ApiConsole = () => {
 
       {message && <div className="notice">{message}</div>}
 
-      <section className="operator-layout">
-        <div className="left-column">
-          <div className="card-surface auth-card">
+      <section className="workspace-grid">
+        <aside className="sidebar-stack">
+          <div className="glass-panel auth-panel">
             <div className="card-head">
               <div>
                 <p className="card-label">Credentials</p>
@@ -365,12 +640,13 @@ const ApiConsole = () => {
               Run login
             </button>
             <p className="helper-text">
-              The login response returns the bearer token and the user context that powers the rest of the dashboard.
+              The login response should return the bearer token and the user context that powers the rest of the admin
+              UI.
             </p>
           </div>
 
           {groupedEndpoints.map((group) => (
-            <div key={group.name} className="card-surface group-card">
+            <div key={group.name} className="glass-panel group-card">
               <div className="group-head">
                 <div>
                   <p className="card-label">{group.name}</p>
@@ -401,6 +677,7 @@ const ApiConsole = () => {
                           </div>
                           <span className={`method ${endpoint.method.toLowerCase()}`}>{endpoint.method}</span>
                         </div>
+                        <p className="tile-description">{endpoint.description}</p>
                         <div className="tile-footer">
                           <span>{endpoint.path}</span>
                           <span>{endpoint.auth === 'bearer' ? 'Bearer required' : 'Public'}</span>
@@ -411,10 +688,10 @@ const ApiConsole = () => {
               </div>
             </div>
           ))}
-        </div>
+        </aside>
 
-        <div className="right-column">
-          <div className="card-surface response-card">
+        <main className="main-stack">
+          <div className="glass-panel response-panel">
             <div className="card-head">
               <div>
                 <p className="card-label">Selected action</p>
@@ -434,41 +711,59 @@ const ApiConsole = () => {
               </div>
             </div>
 
-            <div className="result-shell">
-              {result ? (
-                <>
-                  <div className="result-stats">
-                    <div className="result-stat">
-                      <span>Status</span>
-                      <strong>{result.status}</strong>
-                    </div>
-                    <div className="result-stat">
-                      <span>Elapsed</span>
-                      <strong>{result.elapsedMs} ms</strong>
-                    </div>
-                    <div className="result-stat">
-                      <span>Endpoint</span>
-                      <strong>{result.method}</strong>
-                    </div>
+            <div className="request-response-grid">
+              <div className="request-panel">
+                <div className="subpanel-head">
+                  <div>
+                    <p className="card-label">Request preview</p>
+                    <h3>How this action will run</h3>
                   </div>
-                  <pre className="result-body">{JSON.stringify(result.body, null, 2)}</pre>
-                </>
-              ) : (
-                <div className="empty-state">
-                  <FileText size={36} />
-                  <p>Run any action to inspect the live payload here.</p>
+                  <span className="pill muted">{selectedEndpoint.auth === 'bearer' ? 'Bearer required' : 'Public endpoint'}</span>
                 </div>
-              )}
+                <div className="request-details">
+                  <div><span>Method</span><strong>{selectedEndpoint.method}</strong></div>
+                  <div><span>Path</span><strong>{selectedEndpoint.path}</strong></div>
+                  <div><span>Group</span><strong>{selectedEndpoint.group}</strong></div>
+                </div>
+                {selectedRequestBody ? (
+                  <div className="request-body-card">
+                    <span>Sample payload</span>
+                    <pre>{selectedRequestBody}</pre>
+                  </div>
+                ) : (
+                  <div className="request-body-card empty">
+                    <span>No request body is needed for this action.</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="result-panel">
+                <div className="subpanel-head">
+                  <div>
+                    <p className="card-label">Result view</p>
+                    <h3>{result ? result.title : 'Awaiting execution'}</h3>
+                  </div>
+                  {result && (
+                    <span className={`result-status ${result.status >= 400 ? 'warn' : 'ok'}`}>
+                      {result.status || 'N/A'} · {result.elapsedMs} ms
+                    </span>
+                  )}
+                </div>
+                {renderResultDetails()}
+              </div>
             </div>
           </div>
 
-          <div className="card-surface live-card">
+          <div className="glass-panel history-panel">
             <div className="card-head">
               <div>
                 <p className="card-label">Live history</p>
                 <h2>Recent checks</h2>
               </div>
-              <Copy size={18} onClick={() => navigator.clipboard.writeText(DOCS_URL)} />
+              <button className="ghost-button compact" type="button" onClick={() => navigator.clipboard.writeText(DOCS_URL)}>
+                <Copy size={16} />
+                Copy docs
+              </button>
             </div>
 
             <div className="history-list">
@@ -489,31 +784,54 @@ const ApiConsole = () => {
               )}
             </div>
           </div>
-        </div>
+        </main>
       </section>
 
       <style>{`
-        .api-console {
+        .api-console-shell {
           display: flex;
           flex-direction: column;
-          gap: 1.25rem;
+          gap: 1.2rem;
           color: #0f172a;
+          background:
+            radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 34%),
+            radial-gradient(circle at top right, rgba(14, 165, 233, 0.1), transparent 28%),
+            linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
+          min-height: calc(100vh - 4rem);
+          padding: 1rem;
+          border-radius: 28px;
         }
-        .hero {
+        .console-hero {
           display: grid;
           grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.85fr);
           gap: 1rem;
         }
-        .hero-copy-block,
-        .card-surface {
-          background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,250,252,0.94));
-          border: 1px solid rgba(148,163,184,0.18);
-          border-radius: 24px;
-          box-shadow: 0 24px 60px rgba(15,23,42,0.08);
-          backdrop-filter: blur(12px);
+        .workspace-grid {
+          display: grid;
+          grid-template-columns: minmax(320px, 0.92fr) minmax(0, 1.08fr);
+          gap: 1rem;
+          align-items: start;
         }
-        .hero-copy-block {
-          padding: 1.6rem;
+        .sidebar-stack,
+        .main-stack {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+        .glass-panel {
+          background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.95));
+          border: 1px solid rgba(148,163,184,0.18);
+          border-radius: 26px;
+          box-shadow: 0 24px 60px rgba(15,23,42,0.08);
+          backdrop-filter: blur(14px);
+        }
+        .hero-copy-block,
+        .hero-panel,
+        .auth-panel,
+        .group-card,
+        .response-panel,
+        .history-panel {
+          padding: 1.25rem;
         }
         .eyebrow-row,
         .panel-header,
@@ -522,9 +840,10 @@ const ApiConsole = () => {
         .tile-title-row,
         .hero-actions,
         .hero-notes,
-        .result-stats,
+        .selected-summary,
+        .subpanel-head,
         .history-item,
-        .selected-summary {
+        .request-details {
           display: flex;
           align-items: center;
           gap: 0.9rem;
@@ -533,7 +852,8 @@ const ApiConsole = () => {
         .panel-header,
         .card-head,
         .group-head,
-        .tile-title-row {
+        .tile-title-row,
+        .subpanel-head {
           justify-content: space-between;
         }
         .eyebrow {
@@ -549,7 +869,9 @@ const ApiConsole = () => {
         .profile-chip,
         .note,
         .mini-card,
-        .history-meta {
+        .pill,
+        .history-meta,
+        .result-status {
           border-radius: 999px;
           padding: 0.35rem 0.7rem;
           font-size: 0.78rem;
@@ -562,22 +884,24 @@ const ApiConsole = () => {
           align-items: center;
           gap: 0.4rem;
         }
-        .status-badge.active {
+        .status-badge.active,
+        .result-status.ok {
           background: #dcfce7;
           color: #166534;
         }
-        .status-badge.idle {
+        .status-badge.idle,
+        .result-status.warn {
           background: #fee2e2;
           color: #991b1b;
         }
         .hero h1 {
           margin: 0.75rem 0 0.85rem;
-          font-size: clamp(2.2rem, 4vw, 4rem);
+          font-size: clamp(2.1rem, 4vw, 3.7rem);
           line-height: 1;
           letter-spacing: -0.04em;
         }
         .hero-copy {
-          max-width: 70ch;
+          max-width: 72ch;
           margin: 0;
           color: #475569;
           font-size: 1rem;
@@ -601,16 +925,19 @@ const ApiConsole = () => {
           justify-content: center;
         }
         .primary-button {
-          padding: 0.9rem 1.1rem;
+          padding: 0.95rem 1.15rem;
           background: linear-gradient(135deg, #2563eb, #1d4ed8);
           color: white;
           box-shadow: 0 16px 30px rgba(37, 99, 235, 0.24);
         }
         .secondary-button,
         .ghost-button {
-          padding: 0.85rem 1rem;
-          background: rgba(226,232,240,0.7);
+          padding: 0.9rem 1rem;
+          background: rgba(226,232,240,0.75);
           color: #0f172a;
+        }
+        .ghost-button.compact {
+          padding: 0.7rem 0.9rem;
         }
         .primary-button:hover,
         .secondary-button:hover,
@@ -631,13 +958,14 @@ const ApiConsole = () => {
         }
         .note,
         .profile-chip,
-        .mini-card {
+        .mini-card,
+        .pill,
+        .result-status {
           display: inline-flex;
           align-items: center;
           gap: 0.5rem;
           background: rgba(241,245,249,0.9);
           border: 1px solid rgba(148,163,184,0.18);
-          border-radius: 16px;
         }
         .note {
           padding: 0.75rem 0.85rem;
@@ -647,7 +975,10 @@ const ApiConsole = () => {
         }
         .note-label,
         .panel-kicker,
-        .card-label {
+        .card-label,
+        .subpanel-head h3,
+        .request-body-card span,
+        .detail-panel h3 {
           text-transform: uppercase;
           letter-spacing: 0.12em;
           font-size: 0.7rem;
@@ -659,17 +990,17 @@ const ApiConsole = () => {
           font-weight: 800;
           text-decoration: none;
         }
-        .hero-panel {
-          padding: 1.4rem;
-        }
         .hero-panel h2,
-        .card-surface h2 {
+        .card-head h2,
+        .group-head h2,
+        .subpanel-head h3 {
           margin: 0.2rem 0 0;
-          font-size: 1.05rem;
         }
         .profile-stack,
         .endpoint-stack,
-        .history-list {
+        .history-list,
+        .list-panel,
+        .response-stack {
           display: flex;
           flex-direction: column;
           gap: 0.75rem;
@@ -701,11 +1032,23 @@ const ApiConsole = () => {
           align-items: flex-start;
           gap: 0.25rem;
         }
-        .mini-card span {
+        .mini-card span,
+        .field span,
+        .helper-text,
+        .tile-footer,
+        .tile-description,
+        .selected-summary p,
+        .history-content span,
+        .request-details span,
+        .detail-lines span,
+        .kv-card span {
           color: #64748b;
-          font-size: 0.75rem;
+          font-size: 0.85rem;
         }
-        .mini-card strong {
+        .mini-card strong,
+        .kv-card strong,
+        .detail-lines strong,
+        .request-details strong {
           color: #0f172a;
         }
         .notice {
@@ -716,33 +1059,10 @@ const ApiConsole = () => {
           color: #0f766e;
           font-weight: 700;
         }
-        .operator-layout {
-          display: grid;
-          grid-template-columns: minmax(0, 0.96fr) minmax(0, 1.04fr);
-          gap: 1rem;
-          align-items: start;
-        }
-        .left-column,
-        .right-column {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-        .card-surface {
-          padding: 1.2rem;
-        }
         .field {
           display: flex;
           flex-direction: column;
           gap: 0.45rem;
-        }
-        .field span,
-        .helper-text,
-        .tile-footer,
-        .selected-summary p,
-        .history-content span {
-          color: #64748b;
-          font-size: 0.85rem;
         }
         .field input {
           padding: 0.88rem 0.95rem;
@@ -820,6 +1140,10 @@ const ApiConsole = () => {
           gap: 1rem;
           font-size: 0.78rem;
         }
+        .tile-description {
+          margin: 0.65rem 0 0;
+          line-height: 1.5;
+        }
         .method {
           min-width: 58px;
           height: 28px;
@@ -838,8 +1162,18 @@ const ApiConsole = () => {
         .method.post {
           background: linear-gradient(135deg, #db2777, #7c3aed);
         }
-        .response-card {
-          min-height: 520px;
+        .request-response-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+          gap: 1rem;
+          align-items: start;
+        }
+        .request-panel,
+        .result-panel {
+          background: rgba(248,250,252,0.9);
+          border: 1px solid rgba(148,163,184,0.16);
+          border-radius: 22px;
+          padding: 1rem;
         }
         .selected-summary {
           padding: 0.85rem 0;
@@ -853,53 +1187,132 @@ const ApiConsole = () => {
           flex-direction: column;
           gap: 0.2rem;
         }
-        .selected-summary strong {
-          font-size: 0.98rem;
+        .request-details {
+          flex-wrap: wrap;
+          align-items: stretch;
+          margin-bottom: 0.9rem;
         }
-        .result-shell {
-          min-height: 330px;
-          display: flex;
-          flex-direction: column;
-          gap: 0.9rem;
-        }
-        .result-stats {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 0.75rem;
-        }
-        .result-stat {
-          background: rgba(241,245,249,0.9);
-          border: 1px solid rgba(148,163,184,0.18);
+        .request-details div {
+          flex: 1 1 140px;
+          padding: 0.85rem;
           border-radius: 16px;
-          padding: 0.8rem;
+          background: rgba(255,255,255,0.92);
+          border: 1px solid rgba(148,163,184,0.18);
           display: flex;
           flex-direction: column;
           gap: 0.25rem;
         }
-        .result-stat span,
-        .history-content span {
-          font-size: 0.75rem;
-          text-transform: uppercase;
-          letter-spacing: 0.08em;
+        .request-body-card {
+          border-radius: 18px;
+          border: 1px solid rgba(148,163,184,0.18);
+          background: rgba(255,255,255,0.92);
+          padding: 0.9rem;
         }
-        .result-stat strong {
-          color: #0f172a;
-          font-size: 0.95rem;
+        .request-body-card.empty {
+          color: #64748b;
         }
-        .result-body {
-          flex: 1;
-          margin: 0;
-          border-radius: 20px;
+        .request-body-card pre,
+        .code-panel pre,
+        .toxicity-item pre {
+          margin: 0.65rem 0 0;
+          border-radius: 16px;
           background: #0b1220;
           color: #dbeafe;
           padding: 1rem;
           overflow: auto;
           font-size: 0.82rem;
           line-height: 1.65;
+          white-space: pre-wrap;
+          word-break: break-word;
         }
-        .empty-state,
-        .history-empty {
-          min-height: 240px;
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 0.75rem;
+        }
+        .kv-card {
+          border-radius: 16px;
+          padding: 0.85rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+          background: rgba(255,255,255,0.92);
+          border: 1px solid rgba(148,163,184,0.16);
+        }
+        .kv-card.warn {
+          background: #fff7ed;
+          border-color: #fdba74;
+        }
+        .detail-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          gap: 0.75rem;
+        }
+        .detail-panel,
+        .code-panel,
+        .list-item.card-item {
+          border-radius: 18px;
+          border: 1px solid rgba(148,163,184,0.18);
+          background: rgba(255,255,255,0.94);
+          padding: 0.95rem;
+        }
+        .detail-lines {
+          display: flex;
+          flex-direction: column;
+          gap: 0.65rem;
+          margin-top: 0.7rem;
+        }
+        .detail-lines div {
+          display: flex;
+          flex-direction: column;
+          gap: 0.15rem;
+        }
+        .code-panel pre {
+          min-height: 260px;
+        }
+        .list-panel.compact {
+          gap: 0.55rem;
+        }
+        .list-item {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 0.8rem;
+        }
+        .list-item strong {
+          display: block;
+          margin-bottom: 0.15rem;
+        }
+        .list-item p {
+          color: #64748b;
+          font-size: 0.85rem;
+          margin: 0;
+        }
+        .pill-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.45rem;
+          justify-content: flex-end;
+        }
+        .pill.muted {
+          background: #e2e8f0;
+          color: #475569;
+        }
+        .pill.danger {
+          background: #fee2e2;
+          color: #991b1b;
+        }
+        .toxicity-item {
+          display: flex;
+          flex-direction: column;
+        }
+        .toxicity-item pre {
+          min-height: 120px;
+        }
+        .empty-response,
+        .history-empty,
+        .empty-inline {
+          min-height: 220px;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -909,9 +1322,15 @@ const ApiConsole = () => {
           text-align: center;
           border: 1px dashed #cbd5e1;
           border-radius: 20px;
+          padding: 1.5rem;
         }
-        .history-list {
-          margin-top: 0.5rem;
+        .empty-response h3,
+        .empty-inline {
+          margin: 0;
+        }
+        .empty-response p {
+          margin: 0;
+          max-width: 42ch;
         }
         .history-item {
           align-items: center;
@@ -949,25 +1368,37 @@ const ApiConsole = () => {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
-        @media (max-width: 1100px) {
-          .hero,
-          .operator-layout {
+        @media (max-width: 1180px) {
+          .console-hero,
+          .workspace-grid,
+          .request-response-grid,
+          .detail-grid {
             grid-template-columns: 1fr;
           }
         }
         @media (max-width: 720px) {
           .auth-grid,
           .mini-grid,
-          .result-stats {
+          .stats-grid {
             grid-template-columns: 1fr;
           }
           .tile-title-row,
           .card-head,
           .group-head,
           .selected-summary,
-          .history-item {
+          .history-item,
+          .subpanel-head,
+          .request-details,
+          .list-item {
             flex-direction: column;
             align-items: flex-start;
+          }
+          .pill-row {
+            justify-content: flex-start;
+          }
+          .api-console-shell {
+            padding: 0.75rem;
+            border-radius: 20px;
           }
         }
       `}</style>

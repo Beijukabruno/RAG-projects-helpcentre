@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Link, useNavigate } from 'react-router-dom';
-import { DOCS_URL } from '../lib/api';
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -26,9 +25,6 @@ const Login = () => {
       <div className="login-card">
         <h1>Help Centre Admin</h1>
         <p>Sign in to manage your medical chatbot projects.</p>
-        <p className="login-hint">The bootstrap admin email and password come from BOOTSTRAP_SUPER_ADMIN_EMAIL and BOOTSTRAP_SUPER_ADMIN_PASSWORD. In the sample env, that is admin@example.com / change-me-immediately.</p>
-        <a className="docs-link" href={DOCS_URL} target="_blank" rel="noreferrer">Open API docs</a>
-        <Link className="docs-link console-link" to="/console">Open endpoint console</Link>
         
         {error && <div className="error-message">{error}</div>}
         
@@ -86,21 +82,6 @@ const Login = () => {
           color: #64748b;
           margin-bottom: 2rem;
           font-size: 0.9rem;
-        }
-        .login-hint {
-          margin-top: -1rem;
-          margin-bottom: 1.5rem;
-          font-size: 0.8rem;
-          line-height: 1.5;
-          color: #475569;
-        }
-        .docs-link {
-          display: inline-flex;
-          margin: 0 auto 1.25rem;
-          color: var(--primary-color);
-          font-size: 0.85rem;
-          font-weight: 700;
-          text-decoration: none;
         }
         .form-group {
           margin-bottom: 1.25rem;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../lib/api';
+import api, { adminApi, type FeatureFlags } from '../lib/api';
 import { Link } from 'react-router-dom';
 import { 
   Plus, 
@@ -24,12 +24,20 @@ interface Project {
   audiences: string[];
 }
 
+const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
+  guardrails_enabled: true,
+  reranker_enabled: true,
+  chat_history_enabled: true,
+};
+
 const Projects = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [featureFlags, setFeatureFlags] = useState<FeatureFlags>(DEFAULT_FEATURE_FLAGS);
+  const [featureFlagsLoading, setFeatureFlagsLoading] = useState(false);
   const { user } = useAuth();
   
   // Form state
@@ -79,6 +87,9 @@ const Projects = () => {
     if (!selectedProject) return;
     try {
       await api.patch(`/admin/projects/${selectedProject.id}`, selectedProject);
+      if (user?.roles?.includes('super_admin')) {
+        await adminApi.updateProjectFeatureFlags(selectedProject.id, featureFlags);
+      }
       setShowSettingsModal(false);
       fetchProjects();
     } catch (err: any) {
@@ -96,9 +107,23 @@ const Projects = () => {
     }
   };
 
-  const openSettings = (project: Project) => {
+  const openSettings = async (project: Project) => {
     setSelectedProject({ ...project });
+    setFeatureFlags(DEFAULT_FEATURE_FLAGS);
     setShowSettingsModal(true);
+    setFeatureFlagsLoading(true);
+    try {
+      const resp = await adminApi.getProjectFeatureFlags(project.id);
+      setFeatureFlags({
+        guardrails_enabled: !!resp.feature_flags.guardrails_enabled,
+        reranker_enabled: !!resp.feature_flags.reranker_enabled,
+        chat_history_enabled: !!resp.feature_flags.chat_history_enabled,
+      });
+    } catch (err) {
+      console.error('Failed to load feature flags', err);
+    } finally {
+      setFeatureFlagsLoading(false);
+    }
   };
 
   if (loading) return <div className="loading">Loading projects...</div>;
@@ -282,6 +307,56 @@ const Projects = () => {
                   </div>
                 </div>
               </div>
+              <div className="form-group">
+                <label>Runtime Feature Flags</label>
+                {featureFlagsLoading ? (
+                  <div className="flag-hint">Loading feature flags...</div>
+                ) : (
+                  <div className="flags-grid">
+                    <label className="toggle-card">
+                      <div>
+                        <strong>Guardrails</strong>
+                        <p>Input/output toxicity checks</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={featureFlags.guardrails_enabled}
+                        onChange={(e) => setFeatureFlags({ ...featureFlags, guardrails_enabled: e.target.checked })}
+                        disabled={!user?.roles?.includes('super_admin')}
+                      />
+                    </label>
+
+                    <label className="toggle-card">
+                      <div>
+                        <strong>Reranker</strong>
+                        <p>Cross-encoder reranking</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={featureFlags.reranker_enabled}
+                        onChange={(e) => setFeatureFlags({ ...featureFlags, reranker_enabled: e.target.checked })}
+                        disabled={!user?.roles?.includes('super_admin')}
+                      />
+                    </label>
+
+                    <label className="toggle-card">
+                      <div>
+                        <strong>Chat History</strong>
+                        <p>Prompt includes prior turns</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={featureFlags.chat_history_enabled}
+                        onChange={(e) => setFeatureFlags({ ...featureFlags, chat_history_enabled: e.target.checked })}
+                        disabled={!user?.roles?.includes('super_admin')}
+                      />
+                    </label>
+                  </div>
+                )}
+                {!user?.roles?.includes('super_admin') && (
+                  <div className="flag-hint">Only super admins can update feature flags.</div>
+                )}
+              </div>
               <div className="modal-footer">
                 <button type="button" className="btn-outline" onClick={() => setShowSettingsModal(false)}>Cancel</button>
                 <button type="submit" className="btn-primary">
@@ -332,6 +407,12 @@ const Projects = () => {
         .form-group textarea { height: 80px; resize: vertical; }
         .toggle-group { display: flex; align-items: center; gap: 0.75rem; font-size: 0.85rem; color: #475569; }
         .toggle-group input { width: auto; }
+        .flags-grid { display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
+        .toggle-card { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem 0.9rem; background: #f8fafc; }
+        .toggle-card strong { font-size: 0.9rem; color: #0f172a; }
+        .toggle-card p { font-size: 0.78rem; color: #64748b; margin-top: 0.1rem; }
+        .toggle-card input { width: auto; }
+        .flag-hint { margin-top: 0.35rem; font-size: 0.8rem; color: #64748b; }
         .modal-footer { display: flex; justify-content: flex-end; gap: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color); }
         .loading { padding: 4rem; text-align: center; color: #64748b; }
       `}</style>
