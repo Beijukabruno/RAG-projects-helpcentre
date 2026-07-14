@@ -22,6 +22,10 @@ class ProjectScopedChatRequest(BaseModel):
     """Request schema for project-specific chat routes (no project_id needed; inferred from route)."""
     query: str = Field(..., validation_alias=AliasChoices("query", "question"))
     k: int = 5
+    session_id: Optional[str] = Field(
+        None,
+        description="Optional client-managed session id for chat history continuity.",
+    )
 
 
 class ChatRequest(BaseModel):
@@ -29,6 +33,10 @@ class ChatRequest(BaseModel):
     query: str = Field(..., validation_alias=AliasChoices("query", "question"))
     k: int = 5
     project_id: str = Field("tb", description="Project id from config/projects.yaml. Use project-specific routes instead.")
+    session_id: Optional[str] = Field(
+        None,
+        description="Optional client-managed session id for chat history continuity.",
+    )
 
 
 class ChatResponse(BaseModel):

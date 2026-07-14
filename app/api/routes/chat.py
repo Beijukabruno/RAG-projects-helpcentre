@@ -12,7 +12,7 @@ from typing import Union
 
 from fastapi import APIRouter, HTTPException
 
-from app.core.chat_history import InMemoryChatMessageHistory
+from app.core.chat_history import InMemoryChatMessageHistory, SessionChatHistoryStore
 from app.core.config import PERF_DEBUG, normalize_audience
 from app.core.guardrails import guard_input, guard_output
 from app.core.llm import GeminiAPIError, call_gemma_model
@@ -25,7 +25,7 @@ from app.schemas import ChatRequest, ProjectScopedChatRequest, ChatResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-chat_history = InMemoryChatMessageHistory()
+chat_history_store = SessionChatHistoryStore()
 
 
 # ============================================================================
@@ -98,13 +98,16 @@ def _chat_for_audience(req: Union[ChatRequest, ProjectScopedChatRequest], audien
     audience = normalize_audience(audience, project_id=project_id)
     project_manager.get_project(project_id)
     guardrails_enabled = project_manager.get_feature_flag(project_id, "guardrails_enabled", default=True)
+    session_id = getattr(req, "session_id", None)
+    # Only reuse history when client explicitly provides a stable session_id.
+    history = chat_history_store.get(f"{project_id}:{audience}:{session_id}") if session_id else InMemoryChatMessageHistory()
 
     t_guard_in0 = perf_counter()
     proceed_in, label_in, score_in, safe_resp_in = guard_input(req.query, enabled=guardrails_enabled)
     t_guard_in1 = perf_counter()
     if not proceed_in:
-        chat_history.add_user_message(req.query)
-        chat_history.add_ai_message(safe_resp_in)
+        history.add_user_message(req.query)
+        history.add_ai_message(safe_resp_in)
         t_persist0 = perf_counter()
         persist_chat_exchange(
             user_message=req.query,
@@ -144,8 +147,8 @@ def _chat_for_audience(req: Union[ChatRequest, ProjectScopedChatRequest], audien
     metas = results.get("metadatas", [[]])[0]
     if not docs:
         fallback_msg = "Sorry, I could not find any relevant information for your question."
-        chat_history.add_user_message(req.query)
-        chat_history.add_ai_message(fallback_msg)
+        history.add_user_message(req.query)
+        history.add_ai_message(fallback_msg)
         t_persist0 = perf_counter()
         persist_chat_exchange(
             user_message=req.query,
@@ -176,7 +179,7 @@ def _chat_for_audience(req: Union[ChatRequest, ProjectScopedChatRequest], audien
         )
 
     t_prompt0 = perf_counter()
-    prompt = build_prompt_with_history(project_id, audience, req.query, results, chat_history)
+    prompt = build_prompt_with_history(project_id, audience, req.query, results, history)
     t_prompt1 = perf_counter()
     llm_model_name = project_manager.get_llm_config(project_id).get("model")
 
@@ -210,8 +213,8 @@ def _chat_for_audience(req: Union[ChatRequest, ProjectScopedChatRequest], audien
     proceed_out, label_out, score_out, safe_resp_out = guard_output(gen.get("response", ""), enabled=guardrails_enabled)
     t_guard_out1 = perf_counter()
     if not proceed_out:
-        chat_history.add_user_message(req.query)
-        chat_history.add_ai_message(safe_resp_out)
+        history.add_user_message(req.query)
+        history.add_ai_message(safe_resp_out)
         t_persist0 = perf_counter()
         persist_chat_exchange(
             user_message=req.query,
@@ -261,8 +264,8 @@ def _chat_for_audience(req: Union[ChatRequest, ProjectScopedChatRequest], audien
         )
 
     answer = gen.get("response", "")
-    chat_history.add_user_message(req.query)
-    chat_history.add_ai_message(answer)
+    history.add_user_message(req.query)
+    history.add_ai_message(answer)
     t_persist0 = perf_counter()
     persist_chat_exchange(
         user_message=req.query,
