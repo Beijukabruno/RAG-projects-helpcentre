@@ -189,3 +189,39 @@ jobs:
               -e CHUNKING_STRATEGY="$CHUNKING_STRATEGY" \
               -e BATCH_SIZE="$BATCH_SIZE" \
               helpcentre_indexer
+
+      - name: One-time forced reindex on push
+        if: ${{ github.event_name == 'push' }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          envs: DEPLOY_COMPOSE_FILE
+          command_timeout: 180m
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.VM_APP_PATH }}"
+
+            FORCE_REINDEX_ON_DEPLOY="$(grep -E '^FORCE_REINDEX_ON_DEPLOY=' .env | tail -n 1 | cut -d= -f2- || true)"
+            FORCE_REINDEX_ON_DEPLOY="${FORCE_REINDEX_ON_DEPLOY:-0}"
+
+            if [[ "$FORCE_REINDEX_ON_DEPLOY" != "1" ]]; then
+              echo "FORCE_REINDEX_ON_DEPLOY != 1, skipping one-time forced reindex."
+              exit 0
+            fi
+
+            INDEX_PROJECTS="$(grep -E '^INDEX_PROJECTS=' .env | tail -n 1 | cut -d= -f2- || true)"
+            INDEX_PROJECTS="${INDEX_PROJECTS:-tb,cervical_cancer}"
+            CHUNKING_STRATEGY="$(grep -E '^CHUNKING_STRATEGY=' .env | tail -n 1 | cut -d= -f2- || true)"
+            CHUNKING_STRATEGY="${CHUNKING_STRATEGY:-recursive}"
+            BATCH_SIZE="$(grep -E '^BATCH_SIZE=' .env | tail -n 1 | cut -d= -f2- || true)"
+            BATCH_SIZE="${BATCH_SIZE:-64}"
+
+            echo "Running one-time forced reindex for projects: $INDEX_PROJECTS"
+            docker compose --env-file .env -f "$DEPLOY_COMPOSE_FILE" run --rm --pull always \
+              -e INDEX_PROJECTS="$INDEX_PROJECTS" \
+              -e FORCE_RECHUNK="1" \
+              -e CHUNKING_STRATEGY="$CHUNKING_STRATEGY" \
+              -e BATCH_SIZE="$BATCH_SIZE" \
+              helpcentre_indexer

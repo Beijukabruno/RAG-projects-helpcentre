@@ -3,7 +3,7 @@ from pathlib import Path
 from contextlib import contextmanager
 
 from sqlalchemy import create_engine, text
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import DBAPIError, OperationalError, SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import DATABASE_URL
@@ -109,16 +109,21 @@ def mark_database_unavailable(exc: Exception) -> None:
 @contextmanager
 def db_session_context():
     if not is_database_available():
-        logger.warning("Database session requested while DB is unavailable.")
-        yield None
-        return
+        logger.warning("Database session requested while DB is unavailable. Trying to reconnect.")
+        if not initialize_database():
+            yield None
+            return
 
     session = _session_factory()
     try:
         yield session
     except SQLAlchemyError as exc:
         session.rollback()
-        mark_database_unavailable(exc)
+        # Only transition to DB-unavailable when the connection itself is broken.
+        if isinstance(exc, OperationalError) or (
+            isinstance(exc, DBAPIError) and bool(getattr(exc, "connection_invalidated", False))
+        ):
+            mark_database_unavailable(exc)
         raise
     finally:
         session.close()

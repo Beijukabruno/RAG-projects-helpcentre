@@ -25,9 +25,10 @@ This service is an audience-aware **Retrieval-Augmented Generation (RAG)** platf
 
 ### 3. Retrieval & Generation
 - **Semantic Search:** Vector similarity search with cosine distance.
-- **Reranking:** `cross-encoder/ms-marco-MiniLM-L-6-v2` for ranking refinement.
-- **Answer Generation:** Google Gemini/Gemma IT models grounded in retrieved context.
-- **Guardrails:** Input/Output safety filters for medical accuracy and toxicity.
+- **Reranking:** `cross-encoder/ms-marco-MiniLM-L-6-v2` for ranking refinement, with a config flag to disable it when lower latency matters.
+- **Answer Generation:** Google Gemini/Gemma IT models grounded in retrieved context, using a balanced prompt that aims for answers that are neither too short nor too long.
+- **Guardrails:** Input/Output safety filters for medical accuracy and toxicity, with a config flag to disable them in faster or non-production flows.
+- **Conversation History:** Optional chat-history injection, also controlled by config for shorter prompts.
 
 ---
 

@@ -45,6 +45,8 @@ EMBEDDING_PROVIDER = os.environ.get("EMBEDDING_PROVIDER", "gemini")
 EMBEDDING_DIM = int(os.environ.get("EMBEDDING_DIM", "1536"))
 VECTOR_BACKEND = os.environ.get("VECTOR_BACKEND", "postgres")
 BATCH_SIZE = int(os.environ.get("BATCH_SIZE", "64"))
+CHUNKING_STRATEGY = os.environ.get("CHUNKING_STRATEGY", "semantic")
+PERF_DEBUG = os.environ.get("PERF_DEBUG", "0").strip().lower() in {"1", "true", "yes", "on"}
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
@@ -66,7 +68,21 @@ ROLE_SUPER_ADMIN = "super_admin"
 ROLE_PROJECT_ADMIN = "project_admin"
 
 
-def normalize_audience(audience: str | None) -> str:
-    if audience in COLLECTION_NAMES:
-        return audience
+def normalize_audience(audience: str | None, project_id: str | None = None) -> str:
+    value = (audience or "").strip().lower()
+    if not value:
+        return "general"
+
+    if project_id:
+        try:
+            project_audiences = [str(a).strip().lower() for a in project_manager.get_audiences(project_id)]
+            if value in project_audiences:
+                return value
+            return "general"
+        except Exception:
+            # Fall back to static config when runtime project lookup is unavailable.
+            pass
+
+    if value in COLLECTION_NAMES:
+        return value
     return "general"

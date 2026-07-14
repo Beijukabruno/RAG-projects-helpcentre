@@ -21,7 +21,7 @@ import argparse
 import csv
 import json
 
-from app.core.config import BASE_DIR, DATA_DIR
+from app.core.config import BASE_DIR, CHUNKING_STRATEGY, DATA_DIR
 from app.core.config import BATCH_SIZE
 from app.core.embeddings import embed_query, embed_texts
 from app.core.project_manager import project_manager
@@ -148,9 +148,9 @@ def main():
     parser.add_argument("--project", default="tb", help="Project ID from config/projects.yaml (default: tb)")
     parser.add_argument(
         "--chunking-strategy",
-        default="semantic",
+        default=CHUNKING_STRATEGY,
         choices=["semantic", "recursive"],
-        help="Chunking strategy to use (default: semantic)",
+        help=f"Chunking strategy to use (default from CHUNKING_STRATEGY env: {CHUNKING_STRATEGY})",
     )
     parser.add_argument(
         "--skip-existing",

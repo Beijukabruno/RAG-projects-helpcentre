@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8001")
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@example.com")
-ADMIN_PASS = os.getenv("ADMIN_PASS", "change-me-immediately")
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "helpcentre_admin@gmail.com")
+ADMIN_PASS = os.getenv("ADMIN_PASS", "superadminhelpcentre123")
 
 RESULTS_DIR = "tests/integration_scripts/results"
 

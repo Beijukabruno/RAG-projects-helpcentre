@@ -3,8 +3,8 @@ from app.schemas import SearchRequest
 
 
 def test_search_general_route(monkeypatch):
-    monkeypatch.setattr(search_routes, "guard_input", lambda text: (True, "SAFE", 0.1, None))
-    monkeypatch.setattr(search_routes, "guard_output", lambda text: (True, "SAFE", 0.1, None))
+    monkeypatch.setattr(search_routes, "guard_input", lambda text, enabled=None: (True, "SAFE", 0.1, None))
+    monkeypatch.setattr(search_routes, "guard_output", lambda text, enabled=None: (True, "SAFE", 0.1, None))
     monkeypatch.setattr(
         search_routes,
         "search",
@@ -24,8 +24,8 @@ def test_search_general_route(monkeypatch):
 
 
 def test_search_empty_results_returns_message(monkeypatch):
-    monkeypatch.setattr(search_routes, "guard_input", lambda text: (True, "SAFE", 0.1, None))
-    monkeypatch.setattr(search_routes, "guard_output", lambda text: (True, "SAFE", 0.1, None))
+    monkeypatch.setattr(search_routes, "guard_input", lambda text, enabled=None: (True, "SAFE", 0.1, None))
+    monkeypatch.setattr(search_routes, "guard_output", lambda text, enabled=None: (True, "SAFE", 0.1, None))
     monkeypatch.setattr(
         search_routes,
         "search",

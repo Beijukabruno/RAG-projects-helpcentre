@@ -4,8 +4,8 @@ import uuid
 import sys
 
 BASE_URL = "http://localhost:8000"
-ADMIN_EMAIL = "admin@example.com"
-ADMIN_PASS = "change-me-immediately"
+ADMIN_EMAIL = "helpcentre_admin@gmail.com"
+ADMIN_PASS = "superadminhelpcentre123"
 
 def log(msg, symbol="ℹ️"):
     print(f"{symbol} {msg}")

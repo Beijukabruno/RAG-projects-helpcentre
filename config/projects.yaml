@@ -8,13 +8,23 @@ assistant:
     - "Preserve exact medical terminology, names of tests, medication names, screen labels, and official terms."
     - "Do not invent facts, steps, recommendations, dosages, or clinical guidance that are not supported by the context."
     - "If the context is incomplete, say what is known and clearly state what is missing."
-    - "Keep the response concise unless the user asks for more detail."
+    - "Keep the response balanced: substantial enough to be useful, but not so long that it becomes hard to scan."
   answer_style:
     - "Use short paragraphs and plain language."
     - "Use numbered steps for procedures and workflows."
     - "Use bullet points only when they improve clarity."
     - "Use headings only when they help the user scan the answer."
     - "Do not copy long passages verbatim unless exact wording matters."
+  response_balance:
+    - "Aim for a medium-length answer that is neither too brief nor too long."
+    - "Lead with the direct answer, then add the most relevant supporting details."
+    - "For broad questions, cover the main dimensions of the topic instead of only one narrow subtopic."
+    - "For narrow questions, stay focused and avoid filler."
+    - "Include practical next steps, important caveats, or alternatives when they are supported by the context."
+  feature_flags:
+    guardrails_enabled: true
+    chat_history_enabled: true
+    reranker_enabled: true
   question_types:
     - procedure
     - troubleshooting
@@ -38,6 +48,10 @@ projects:
     llm:
       model: gemma-4-31b-it
       system_role: "Tuberculosis care assistant"
+      feature_flags:
+        guardrails_enabled: true
+        chat_history_enabled: true
+        reranker_enabled: true
       prompt_rules:
         - "Use TB sources as the primary evidence base for TB-related medical questions."
         - "When the user asks about a workflow, screen, form, or platform action, answer the workflow first and only add TB context if it helps."
@@ -52,6 +66,10 @@ projects:
     llm:
       model: gemma-4-31b-it
       system_role: "Cervical cancer care assistant"
+      feature_flags:
+        guardrails_enabled: true
+        chat_history_enabled: true
+        reranker_enabled: true
       prompt_rules:
         - "Use cervical cancer sources as the primary evidence base for cervical-cancer-related questions."
         - "When the user asks about screening, follow-up, staging, or treatment, answer the user's question directly before adding supporting context."

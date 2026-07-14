@@ -42,8 +42,10 @@ def initialize_reranker():
         _device = None
 
 
-def rerank_results(query: str, results: Dict[str, Any], top_n: int = 5) -> Dict[str, Any]:
-    if not RERANKER_ENABLED:
+def rerank_results(query: str, results: Dict[str, Any], top_n: int = 5, enabled: bool | None = None) -> Dict[str, Any]:
+    reranking_enabled = RERANKER_ENABLED if enabled is None else enabled
+
+    if not reranking_enabled:
         return {
             "ids": [results["ids"][0][:top_n]],
             "documents": [results["documents"][0][:top_n]],
@@ -97,8 +99,11 @@ def rerank_documents_list(
     documents: List[str],
     metadatas: List[Dict] | None = None,
     top_n: int = 5,
+    enabled: bool | None = None,
 ) -> Tuple[List[str], List[str], List[Dict], List[float]]:
-    if not RERANKER_ENABLED:
+    reranking_enabled = RERANKER_ENABLED if enabled is None else enabled
+
+    if not reranking_enabled:
         metadatas = metadatas or [{}] * len(documents)
         return ids[:top_n], documents[:top_n], metadatas[:top_n], []
 

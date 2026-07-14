@@ -6,15 +6,19 @@ compatible legacy endpoints accepting `project_id` in the request body
 are kept but new clients should call the project-scoped routes.
 """
 
+import logging
+from time import perf_counter
+
 from fastapi import APIRouter, HTTPException
 
-from app.core.config import normalize_audience
+from app.core.config import PERF_DEBUG, normalize_audience
 from app.core.guardrails import guard_input, guard_output
 from app.core.project_manager import project_manager
 from app.retrieval.semantic_search import search
 from app.schemas import Match, ProjectScopedSearchRequest, SearchRequest, SearchResponse
 
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # TB Project Search Routes
@@ -97,10 +101,22 @@ def semantic_search_api_by_audience(audience: str, req: SearchRequest) -> Search
 
 
 def _semantic_search_for_audience(req: SearchRequest, audience: str, project_id: str) -> SearchResponse:
-    audience = normalize_audience(audience)
+    t_total0 = perf_counter()
+    audience = normalize_audience(audience, project_id=project_id)
     project_manager.get_project(project_id)
-    proceed_in, label_in, score_in, safe_resp_in = guard_input(req.query)
+    guardrails_enabled = project_manager.get_feature_flag(project_id, "guardrails_enabled", default=True)
+    t_guard_in0 = perf_counter()
+    proceed_in, label_in, score_in, safe_resp_in = guard_input(req.query, enabled=guardrails_enabled)
+    t_guard_in1 = perf_counter()
     if not proceed_in:
+        if PERF_DEBUG:
+            logger.info(
+                "Perf[search-blocked-input] project=%s audience=%s guard_in_ms=%.1f total_ms=%.1f",
+                project_id,
+                audience,
+                (t_guard_in1 - t_guard_in0) * 1000,
+                (perf_counter() - t_total0) * 1000,
+            )
         return SearchResponse(
             query=req.query,
             total_matches=0,
@@ -111,7 +127,9 @@ def _semantic_search_for_audience(req: SearchRequest, audience: str, project_id:
         )
 
     try:
+        t_retrieval0 = perf_counter()
         results = search(req.query, k=req.k, audience=audience, project_id=project_id)
+        t_retrieval1 = perf_counter()
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Search failed: {exc}") from exc
 
@@ -119,6 +137,15 @@ def _semantic_search_for_audience(req: SearchRequest, audience: str, project_id:
     metadatas = results.get("metadatas", [[]])[0]
     ids = results.get("ids", [[]])[0]
     if not documents or not ids:
+        if PERF_DEBUG:
+            logger.info(
+                "Perf[search-no-docs] project=%s audience=%s guard_in_ms=%.1f retrieval_ms=%.1f total_ms=%.1f",
+                project_id,
+                audience,
+                (t_guard_in1 - t_guard_in0) * 1000,
+                (t_retrieval1 - t_retrieval0) * 1000,
+                (perf_counter() - t_total0) * 1000,
+            )
         return SearchResponse(
             query=req.query,
             total_matches=0,
@@ -152,14 +179,38 @@ def _semantic_search_for_audience(req: SearchRequest, audience: str, project_id:
         )
 
     output_text = " ".join([match.full_text for match in matches])
-    proceed_out, label_out, score_out, _ = guard_output(output_text)
+    t_guard_out0 = perf_counter()
+    proceed_out, label_out, score_out, _ = guard_output(output_text, enabled=guardrails_enabled)
+    t_guard_out1 = perf_counter()
     if not proceed_out:
+        if PERF_DEBUG:
+            logger.info(
+                "Perf[search-blocked-output] project=%s audience=%s guard_in_ms=%.1f retrieval_ms=%.1f guard_out_ms=%.1f total_ms=%.1f",
+                project_id,
+                audience,
+                (t_guard_in1 - t_guard_in0) * 1000,
+                (t_retrieval1 - t_retrieval0) * 1000,
+                (t_guard_out1 - t_guard_out0) * 1000,
+                (perf_counter() - t_total0) * 1000,
+            )
         return SearchResponse(
             query=req.query,
             total_matches=0,
             matches=[],
             toxicity_input={"label": label_in, "score": score_in},
             toxicity_output={"label": label_out, "score": score_out},
+        )
+
+    if PERF_DEBUG:
+        logger.info(
+            "Perf[search] project=%s audience=%s guard_in_ms=%.1f retrieval_ms=%.1f guard_out_ms=%.1f total_ms=%.1f matches=%s",
+            project_id,
+            audience,
+            (t_guard_in1 - t_guard_in0) * 1000,
+            (t_retrieval1 - t_retrieval0) * 1000,
+            (t_guard_out1 - t_guard_out0) * 1000,
+            (perf_counter() - t_total0) * 1000,
+            len(matches),
         )
 
     return SearchResponse(

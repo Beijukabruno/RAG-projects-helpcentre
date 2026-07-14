@@ -1,8 +1,10 @@
 import logging
 import os
+from time import perf_counter
 from typing import Dict
 
 from dotenv import load_dotenv
+from app.core.config import PERF_DEBUG
 
 
 load_dotenv()
@@ -52,10 +54,14 @@ def call_gemma_model(prompt: str, model_name: str | None = None) -> Dict:
     fallback_model = os.getenv("GEMMA_FALLBACK", "models/gemma-4-31b-it")
 
     def _call(model_to_use: str) -> Dict:
+        t0 = perf_counter()
         response = client.models.generate_content(model=model_to_use, contents=prompt)
+        t1 = perf_counter()
         # response may expose .text or nested fields depending on SDK; coerce to string
         text = getattr(response, "text", None) or str(response)
         model_version = model_to_use.split("/")[-1] if "/" in model_to_use else model_to_use
+        if PERF_DEBUG:
+            logger.info("Perf[llm] model=%s latency_ms=%.1f", model_to_use, (t1 - t0) * 1000)
         return {"response": text, "llm_model": model_to_use, "llm_model_version": model_version}
 
     # First try primary model, then fallback to a lighter "flash" model on server errors.

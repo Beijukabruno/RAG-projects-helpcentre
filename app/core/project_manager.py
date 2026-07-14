@@ -1,6 +1,7 @@
 import yaml
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -112,10 +113,69 @@ class ProjectManager:
     def get_assistant_config(self) -> Dict:
         return self.assistant
 
+    def _coerce_bool(self, value, default: bool = False) -> bool:
+        if value is None:
+            return default
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            return value.strip().lower() in {"1", "true", "yes", "on"}
+        return bool(value)
+
+    def get_assistant_feature_flags(self) -> Dict:
+        flags = self.get_assistant_config().get("feature_flags", {})
+        flags = flags if isinstance(flags, dict) else {}
+        env_flags = self._get_env_feature_flags()
+        # Environment values override config for fast operational toggles.
+        return {**flags, **env_flags}
+
+    def _get_env_feature_flags(self) -> Dict:
+        mapping = {
+            "GUARDRAILS_ENABLED": "guardrails_enabled",
+            "RERANKER_ENABLED": "reranker_enabled",
+            "CHAT_HISTORY_ENABLED": "chat_history_enabled",
+            "HYBRID_RETRIEVAL_ENABLED": "hybrid_retrieval_enabled",
+        }
+        env_flags: Dict[str, bool] = {}
+        for env_name, flag_name in mapping.items():
+            raw = os.getenv(env_name)
+            if raw is not None:
+                env_flags[flag_name] = self._coerce_bool(raw, default=False)
+        return env_flags
+
+    def get_llm_feature_flags(self, project_id: str) -> Dict:
+        flags = self.get_llm_config(project_id).get("feature_flags", {})
+        return flags if isinstance(flags, dict) else {}
+
+    def get_feature_flag(self, project_id: str, flag_name: str, default: bool = True) -> bool:
+        project_flags = self.get_llm_feature_flags(project_id)
+        if flag_name in project_flags:
+            return self._coerce_bool(project_flags.get(flag_name), default)
+
+        assistant_flags = self.get_assistant_feature_flags()
+        if flag_name in assistant_flags:
+            return self._coerce_bool(assistant_flags.get(flag_name), default)
+
+        return default
+
+    def get_assistant_flag(self, flag_name: str, default: bool = True) -> bool:
+        assistant_flags = self.get_assistant_feature_flags()
+        if flag_name in assistant_flags:
+            return self._coerce_bool(assistant_flags.get(flag_name), default)
+        return default
+
     def get_system_role(self, project_id: str) -> str:
-        return self.get_llm_config(project_id).get(
-            "system_role",
-            "You are a careful medical assistant. Use the provided project knowledge base as the primary source and answer with clear, safe, clinically grounded language.",
+        project_role = self.get_llm_config(project_id).get("system_role")
+        if isinstance(project_role, str) and project_role.strip():
+            return project_role.strip()
+
+        assistant_role = self.get_assistant_config().get("system_role")
+        if isinstance(assistant_role, str) and assistant_role.strip():
+            return assistant_role.strip()
+
+        return (
+            "You are a careful medical assistant. Use the provided project knowledge base "
+            "as the primary source and answer with clear, safe, clinically grounded language."
         )
 
     def get_prompt_rules(self, project_id: str) -> List[str]:

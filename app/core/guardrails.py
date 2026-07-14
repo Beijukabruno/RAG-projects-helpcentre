@@ -2,14 +2,22 @@ import logging
 
 from transformers import pipeline
 
+from app.core.project_manager import project_manager
+
 
 logger = logging.getLogger(__name__)
 SAFE_RESPONSE = "Sorry, I can't assist with that."
 _pipe = None
 
 
+def _guardrails_enabled() -> bool:
+    return project_manager.get_assistant_flag("guardrails_enabled", default=True)
+
+
 def _get_pipeline():
     global _pipe
+    if not _guardrails_enabled():
+        return None
     if _pipe is None:
         model_path = "Intel/toxic-prompt-roberta"
         logger.info("Loading toxicity guardrail model: %s", model_path)
@@ -18,7 +26,13 @@ def _get_pipeline():
 
 
 def check_toxicity(text):
+    if not _guardrails_enabled():
+        return "SAFE", 0.0
+
     pipe = _get_pipeline()
+    if pipe is None:
+        return "SAFE", 0.0
+
     max_length = pipe.tokenizer.model_max_length if hasattr(pipe.tokenizer, "model_max_length") else 512
     inputs = pipe.tokenizer(text, truncation=True, max_length=max_length, return_tensors="pt")
     truncated_text = pipe.tokenizer.decode(inputs["input_ids"][0], skip_special_tokens=True)
@@ -26,14 +40,20 @@ def check_toxicity(text):
     return result["label"], result["score"]
 
 
-def guard_input(text):
+def guard_input(text, enabled: bool | None = None):
+    if enabled is False:
+        return True, "SAFE", 0.0, None
+
     label, score = check_toxicity(text)
     if label == "TOXIC":
         return False, label, score, SAFE_RESPONSE
     return True, label, score, None
 
 
-def guard_output(text):
+def guard_output(text, enabled: bool | None = None):
+    if enabled is False:
+        return True, "SAFE", 0.0, None
+
     label, score = check_toxicity(text)
     if label == "TOXIC":
         return False, label, score, SAFE_RESPONSE
@@ -42,4 +62,7 @@ def guard_output(text):
 
 def initialize_guardrails() -> None:
     """Warm up the toxicity guardrail pipeline so first request doesn't pay the load cost."""
+    if not _guardrails_enabled():
+        logger.info("Guardrails disabled")
+        return
     _get_pipeline()

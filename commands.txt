@@ -51,3 +51,34 @@ Batches: 100%|██████████████████████
 2026-05-12 19:50:15,452 | WARNING | app.db.session | Database session requested while DB is unavailable.
 2026-05-12 19:50:15,452 | WARNING | app.db.persistence | Skipping chat persistence because the database is unavailable.
 INFO:     127.0.0.1:34502 - "POST /tb/chat/general HTTP/1.1" 200 OK
+
+
+Option 1: Docker local deploy (recommended)
+
+From repo root:
+docker compose -f docker-compose.local.yml up -d helpcentre_postgres
+
+Build chunks/index once:
+docker compose -f docker-compose.local.yml run --rm helpcentre_indexer
+
+Start API:
+docker compose -f docker-compose.local.yml up -d helpcentre_api
+
+Open/check endpoints:
+curl http://localhost:8000/health
+curl http://localhost:8000/ready
+open in browser: http://localhost:8000/docs
+
+Test admin login:
+curl -X POST http://localhost:8000/admin/auth/login -H "Content-Type: application/json" -d '{"email":"helpcentre_admin@gmail.com","password":"superadminhelpcentre123"}'
+
+Option 2: Run API directly (no Docker)
+
+Install deps:
+python3 -m pip install -r requirements.txt
+
+Start API:
+python3 -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+Access:
+http://localhost:8000/health

@@ -38,8 +38,8 @@ DEPLOYED_BASE_URL = "https://helpcentre-dsi-mdr.emergentai.ug"
 
 
 DEFAULT_BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
-DEFAULT_ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@example.com")
-DEFAULT_ADMIN_PASSWORD = os.getenv("ADMIN_PASS", "change-me-immediately")
+DEFAULT_ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "helpcentre_admin@gmail.com")
+DEFAULT_ADMIN_PASSWORD = os.getenv("ADMIN_PASS", "superadminhelpcentre123")
 DEFAULT_PROJECT_ID = os.getenv("PROJECT_ID", "tb")
 DEFAULT_AUDIENCE = os.getenv("AUDIENCE", "general")
 DEFAULT_OUTPUT_DIR = os.getenv(

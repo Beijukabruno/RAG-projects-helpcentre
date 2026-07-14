@@ -12,6 +12,8 @@ from app.core.auth import (
     create_access_token,
     get_current_user,
     hash_password,
+    require_global_action,
+    require_project_action,
     require_project_admin,
     require_super_admin,
 )
@@ -23,6 +25,7 @@ from app.core.kb_admin import (
     list_markdown_sources,
     remove_markdown_source,
 )
+from app.core.project_manager import project_manager
 from app.db import admin_repo
 from app.db.admin_repo import DatabaseUnavailable
 from app.db.persistence import get_last_records, get_last_records_for_project
@@ -79,6 +82,32 @@ class ProjectMembershipUpdate(BaseModel):
     user_id: str
 
 
+class FeatureFlagsUpdate(BaseModel):
+    guardrails_enabled: bool | None = None
+    reranker_enabled: bool | None = None
+    chat_history_enabled: bool | None = None
+    hybrid_retrieval_enabled: bool | None = None
+
+
+def _extract_feature_flags(project: dict) -> dict[str, bool]:
+    config_json = project.get("config_json") if isinstance(project, dict) else {}
+    if not isinstance(config_json, dict):
+        config_json = {}
+
+    llm_cfg = config_json.get("llm") if isinstance(config_json.get("llm"), dict) else {}
+    llm_flags = llm_cfg.get("feature_flags") if isinstance(llm_cfg.get("feature_flags"), dict) else {}
+
+    return {
+        "guardrails_enabled": project_manager.get_feature_flag(project["id"], "guardrails_enabled", default=True),
+        "reranker_enabled": project_manager.get_feature_flag(project["id"], "reranker_enabled", default=True),
+        "chat_history_enabled": project_manager.get_feature_flag(project["id"], "chat_history_enabled", default=True),
+        "hybrid_retrieval_enabled": project_manager.get_feature_flag(project["id"], "hybrid_retrieval_enabled", default=True),
+        "source": {
+            "llm_feature_flags": llm_flags,
+        },
+    }
+
+
 def _handle_db_error(exc: DatabaseUnavailable):
     raise HTTPException(status_code=503, detail=str(exc)) from exc
 
@@ -106,7 +135,7 @@ def me(current_user: dict = Depends(get_current_user)):
     return current_user
 
 
-@router.post("/users", dependencies=[Depends(require_super_admin)], tags=["Admin: Users"])
+@router.post("/users", dependencies=[Depends(require_global_action("users.manage"))], tags=["Admin: Users"])
 def create_user(payload: UserCreate):
     try:
         user = admin_repo.create_user(
@@ -128,7 +157,7 @@ def create_user(payload: UserCreate):
         _handle_db_error(exc)
 
 
-@router.get("/users", dependencies=[Depends(require_super_admin)], tags=["Admin: Users"])
+@router.get("/users", dependencies=[Depends(require_global_action("users.manage"))], tags=["Admin: Users"])
 def list_users():
     try:
         return {"users": admin_repo.list_users()}
@@ -136,7 +165,7 @@ def list_users():
         _handle_db_error(exc)
 
 
-@router.patch("/users/{user_id}/active", dependencies=[Depends(require_super_admin)], tags=["Admin: Users"])
+@router.patch("/users/{user_id}/active", dependencies=[Depends(require_global_action("users.manage"))], tags=["Admin: Users"])
 def set_user_active(user_id: str, payload: UserActiveUpdate):
     try:
         if not admin_repo.set_user_active(_parse_uuid(user_id), payload.is_active):
@@ -147,7 +176,7 @@ def set_user_active(user_id: str, payload: UserActiveUpdate):
         _handle_db_error(exc)
 
 
-@router.delete("/users/{user_id}", dependencies=[Depends(require_super_admin)], tags=["Admin: Users"])
+@router.delete("/users/{user_id}", dependencies=[Depends(require_global_action("users.manage"))], tags=["Admin: Users"])
 def delete_user(user_id: str):
     try:
         if not admin_repo.delete_user(_parse_uuid(user_id)):
@@ -158,7 +187,7 @@ def delete_user(user_id: str):
         _handle_db_error(exc)
 
 
-@router.post("/users/{user_id}/roles", dependencies=[Depends(require_super_admin)], tags=["Admin: Users"])
+@router.post("/users/{user_id}/roles", dependencies=[Depends(require_global_action("users.manage"))], tags=["Admin: Users"])
 def add_user_role(user_id: str, payload: RoleUpdate):
     try:
         admin_repo.assign_global_role(_parse_uuid(user_id), payload.role)
@@ -170,7 +199,7 @@ def add_user_role(user_id: str, payload: RoleUpdate):
         _handle_db_error(exc)
 
 
-@router.delete("/users/{user_id}/roles/{role}", dependencies=[Depends(require_super_admin)], tags=["Admin: Users"])
+@router.delete("/users/{user_id}/roles/{role}", dependencies=[Depends(require_global_action("users.manage"))], tags=["Admin: Users"])
 def remove_user_role(user_id: str, role: str):
     if role not in {ROLE_SUPER_ADMIN, ROLE_PROJECT_ADMIN}:
         raise HTTPException(status_code=400, detail="Unsupported role.")
@@ -182,7 +211,7 @@ def remove_user_role(user_id: str, role: str):
         _handle_db_error(exc)
 
 
-@router.get("/projects", dependencies=[Depends(require_super_admin)], tags=["Admin: Projects"])
+@router.get("/projects", dependencies=[Depends(require_global_action("projects.manage"))], tags=["Admin: Projects"])
 def list_projects():
     try:
         return {"projects": admin_repo.list_projects()}
@@ -190,7 +219,7 @@ def list_projects():
         _handle_db_error(exc)
 
 
-@router.post("/projects", dependencies=[Depends(require_super_admin)], tags=["Admin: Projects"])
+@router.post("/projects", dependencies=[Depends(require_global_action("projects.manage"))], tags=["Admin: Projects"])
 def create_project(payload: ProjectCreate):
     try:
         project = admin_repo.create_project(
@@ -212,7 +241,7 @@ def create_project(payload: ProjectCreate):
 
 
 @router.get("/projects/{project_id}", tags=["Admin: Projects"])
-def get_project(project_id: str, current_user: dict = Depends(require_project_admin)):
+def get_project(project_id: str, current_user: dict = Depends(require_project_action("project.read"))):
     try:
         project = admin_repo.get_project(project_id)
         if not project:
@@ -222,7 +251,7 @@ def get_project(project_id: str, current_user: dict = Depends(require_project_ad
         _handle_db_error(exc)
 
 
-@router.patch("/projects/{project_id}", dependencies=[Depends(require_super_admin)], tags=["Admin: Projects"])
+@router.patch("/projects/{project_id}", dependencies=[Depends(require_global_action("projects.manage"))], tags=["Admin: Projects"])
 def update_project(project_id: str, payload: ProjectUpdate):
     try:
         project = admin_repo.update_project(project_id, **payload.model_dump(exclude_unset=True))
@@ -234,7 +263,7 @@ def update_project(project_id: str, payload: ProjectUpdate):
         _handle_db_error(exc)
 
 
-@router.delete("/projects/{project_id}", dependencies=[Depends(require_super_admin)], tags=["Admin: Projects"])
+@router.delete("/projects/{project_id}", dependencies=[Depends(require_global_action("projects.manage"))], tags=["Admin: Projects"])
 def delete_project(project_id: str):
     try:
         if not admin_repo.delete_project(project_id):
@@ -245,15 +274,70 @@ def delete_project(project_id: str):
         _handle_db_error(exc)
 
 
+@router.get("/projects/{project_id}/feature-flags", tags=["Admin: Projects"])
+def get_project_feature_flags(project_id: str, current_user: dict = Depends(require_project_action("project.feature_flags.read"))):
+    try:
+        project = admin_repo.get_project(project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found.")
+        return {
+            "project_id": project_id,
+            "feature_flags": _extract_feature_flags(project),
+        }
+    except DatabaseUnavailable as exc:
+        _handle_db_error(exc)
+
+
+@router.patch("/projects/{project_id}/feature-flags", dependencies=[Depends(require_global_action("project.feature_flags.update"))], tags=["Admin: Projects"])
+def update_project_feature_flags(project_id: str, payload: FeatureFlagsUpdate):
+    try:
+        project = admin_repo.get_project(project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found.")
+
+        incoming = payload.model_dump(exclude_unset=True)
+        if not incoming:
+            return {"project_id": project_id, "feature_flags": _extract_feature_flags(project)}
+
+        config_json = project.get("config_json") if isinstance(project.get("config_json"), dict) else {}
+        llm_cfg = config_json.get("llm") if isinstance(config_json.get("llm"), dict) else {}
+        llm_flags = llm_cfg.get("feature_flags") if isinstance(llm_cfg.get("feature_flags"), dict) else {}
+
+        for key, value in incoming.items():
+            llm_flags[key] = bool(value)
+
+        llm_cfg["feature_flags"] = llm_flags
+        config_json["llm"] = llm_cfg
+
+        updated = admin_repo.update_project(project_id, config_json=config_json)
+        if not updated:
+            raise HTTPException(status_code=404, detail="Project not found.")
+
+        project_manager.refresh_from_db()
+        admin_repo.record_audit(
+            action="project.feature_flags.update",
+            entity_type="project",
+            entity_id=project_id,
+            payload={"feature_flags": incoming},
+        )
+
+        return {
+            "project_id": project_id,
+            "feature_flags": _extract_feature_flags(updated),
+        }
+    except DatabaseUnavailable as exc:
+        _handle_db_error(exc)
+
+
 @router.get("/projects/{project_id}/admins", tags=["Admin: Projects"])
-def list_project_admins(project_id: str, current_user: dict = Depends(require_project_admin)):
+def list_project_admins(project_id: str, current_user: dict = Depends(require_project_action("project.admins.read"))):
     try:
         return {"project_id": project_id, "admins": admin_repo.list_project_members(project_id)}
     except DatabaseUnavailable as exc:
         _handle_db_error(exc)
 
 
-@router.post("/projects/{project_id}/admins", dependencies=[Depends(require_super_admin)], tags=["Admin: Projects"])
+@router.post("/projects/{project_id}/admins", dependencies=[Depends(require_global_action("project.admins.manage"))], tags=["Admin: Projects"])
 def add_project_admin(project_id: str, payload: ProjectMembershipUpdate):
     try:
         user_id = _parse_uuid(payload.user_id)
@@ -267,7 +351,7 @@ def add_project_admin(project_id: str, payload: ProjectMembershipUpdate):
         _handle_db_error(exc)
 
 
-@router.delete("/projects/{project_id}/admins/{user_id}", dependencies=[Depends(require_super_admin)], tags=["Admin: Projects"])
+@router.delete("/projects/{project_id}/admins/{user_id}", dependencies=[Depends(require_global_action("project.admins.manage"))], tags=["Admin: Projects"])
 def remove_project_admin(project_id: str, user_id: str):
     try:
         admin_repo.remove_project_membership(project_id, _parse_uuid(user_id))
@@ -278,7 +362,7 @@ def remove_project_admin(project_id: str, user_id: str):
 
 
 @router.get("/projects/{project_id}/knowledge-base", tags=["Admin: Knowledge Base"])
-def list_knowledge_base(project_id: str, audience: str = "general", current_user: dict = Depends(require_project_admin)):
+def list_knowledge_base(project_id: str, audience: str = "general", current_user: dict = Depends(require_project_action("kb.read"))):
     # Return both disk-based sources (legacy/manual) and DB-tracked assets
     return {
         "project_id": project_id, 
@@ -288,88 +372,10 @@ def list_knowledge_base(project_id: str, audience: str = "general", current_user
     }
 
 
-@router.post("/projects/{project_id}/knowledge-base", tags=["Admin: Knowledge Base"])
-async def upload_knowledge_base_source(
-    project_id: str,
-    background_tasks: BackgroundTasks,
-    audience: str = Form("general"),
-    source_name: str | None = Form(None),
-    source_url: str | None = Form(None),
-    file: UploadFile = File(...),
-    current_user: dict = Depends(require_project_admin),
-):
-    try:
-        result = await add_knowledge_source(
-            project_id=project_id,
-            audience=audience,
-            upload=file,
-            source_name=source_name,
-            source_url=source_url,
-            actor_user_id=current_user["id"],
-        )
-        
-        # Trigger background processing (PDF to MD, etc.)
-        background_tasks.add_task(process_ingestion_job, result["job_id"])
-        
-        admin_repo.record_audit(
-            actor_user_id=current_user["id"],
-            project_id=project_id,
-            action="knowledge_base.source.upload",
-            entity_type="source",
-            entity_id=result["file_name"],
-            payload={"audience": audience, "job_id": result["job_id"], "asset_id": result["asset_id"]},
-        )
-        return result
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except DatabaseUnavailable as exc:
-        _handle_db_error(exc)
-
-
-@router.post("/projects/{project_id}/knowledge-base/{asset_id}/activate", tags=["Admin: Knowledge Base"])
-async def activate_knowledge_base_source(
-    project_id: str,
-    asset_id: str,
-    audience: str = "general",
-    current_user: dict = Depends(require_project_admin),
-):
-    try:
-        result = await activate_source(project_id, audience, asset_id)
-        admin_repo.record_audit(
-            actor_user_id=current_user["id"],
-            project_id=project_id,
-            action="knowledge_base.source.activate",
-            entity_type="source",
-            entity_id=asset_id,
-            payload={"audience": audience, "index_run_id": result["index_run_id"], "chunk_count": result["chunk_count"]},
-        )
-        return result
-    except Exception as e:
-        if isinstance(e, HTTPException):
-            raise e
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.delete("/projects/{project_id}/knowledge-base/{file_name}", tags=["Admin: Knowledge Base"])
-def delete_knowledge_base_source(
-    project_id: str,
-    file_name: str,
-    audience: str = "general",
-    current_user: dict = Depends(require_project_admin),
-):
-    try:
-        result = remove_markdown_source(project_id, audience, file_name)
-        admin_repo.record_audit(
-            actor_user_id=current_user["id"],
-            project_id=project_id,
-            action="knowledge_base.source.remove",
-            entity_type="source",
-            entity_id=file_name,
-            payload={"audience": audience, **result},
-        )
-        return result
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+# Pending approval: knowledge-base write endpoints are intentionally disabled.
+# - POST /projects/{project_id}/knowledge-base
+# - POST /projects/{project_id}/knowledge-base/{asset_id}/activate
+# - DELETE /projects/{project_id}/knowledge-base/{file_name}
 
 
 # --------------------------------------------------------------------------- #
@@ -386,7 +392,7 @@ def platform_overview():
 
 
 @router.get("/projects/{project_id}/overview", tags=["Admin: Monitoring"])
-def project_overview(project_id: str, current_user: dict = Depends(require_project_admin)):
+def project_overview(project_id: str, current_user: dict = Depends(require_project_action("project.monitor.read"))):
     """High-level statistics for a specific project."""
     try:
         return admin_repo.get_project_overview(project_id)
@@ -410,13 +416,12 @@ def toxicity_feed(limit: int = 50):
     """Retrieve messages flagged as toxic."""
     from app.db.session import db_session_context
     from app.db.models import ChatMessage
-    from sqlalchemy import func
     with db_session_context() as db:
         if db is None:
             raise HTTPException(status_code=503, detail="Database unavailable.")
         msgs = db.query(ChatMessage).filter(
             ChatMessage.toxicity_output != None,
-            func.json_extract_path_text(ChatMessage.toxicity_output, "toxic") == "true"
+            ChatMessage.toxicity_output["toxic"].astext == "true",
         ).order_by(ChatMessage.created_at.desc()).limit(limit).all()
         
         return {
@@ -434,7 +439,7 @@ def toxicity_feed(limit: int = 50):
 
 
 @router.get("/projects/{project_id}/audit-logs", tags=["Admin: Monitoring"])
-def list_project_audit_logs(project_id: str, limit: int = 50, current_user: dict = Depends(require_project_admin)):
+def list_project_audit_logs(project_id: str, limit: int = 50, current_user: dict = Depends(require_project_action("project.monitor.read"))):
     """Retrieve audit logs for a specific project."""
     try:
         return {"project_id": project_id, "logs": admin_repo.list_audit_logs(project_id=project_id, limit=limit)}
@@ -443,7 +448,7 @@ def list_project_audit_logs(project_id: str, limit: int = 50, current_user: dict
 
 
 @router.get("/last-records", include_in_schema=False, tags=["Admin: Logs"])
-def get_last_records_endpoint(n: int = 100, current_user: dict = Depends(require_super_admin)):
+def get_last_records_endpoint(n: int = 100, current_user: dict = Depends(require_global_action("logs.global.read"))):
     return {"database": get_database_status(), "records": get_last_records(n)}
 
 
@@ -452,7 +457,7 @@ def get_project_last_records(
     project_id: str,
     n: int = 5,
     audience: str | None = None,
-    current_user: dict = Depends(require_project_admin),
+    current_user: dict = Depends(require_project_action("project.logs.read")),
 ):
     return {
         "database": get_database_status(),
@@ -463,7 +468,7 @@ def get_project_last_records(
 
 
 @router.get("/last-records-csv", include_in_schema=False, tags=["Admin: Logs"])
-def get_last_records_csv(n: int = 100, current_user: dict = Depends(require_super_admin)):
+def get_last_records_csv(n: int = 100, current_user: dict = Depends(require_global_action("logs.global.export"))):
     records = get_last_records(n)
     output = io.StringIO()
     writer = csv.writer(output)
@@ -511,7 +516,7 @@ def get_project_last_records_csv(
     project_id: str,
     n: int = 5,
     audience: str | None = None,
-    current_user: dict = Depends(require_project_admin),
+    current_user: dict = Depends(require_project_action("project.logs.export")),
 ):
     records = get_last_records_for_project(project_id, audience=audience, limit=n)
     output = io.StringIO()
