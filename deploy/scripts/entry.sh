@@ -13,6 +13,7 @@ BOOTSTRAP_INDEX_ON_START=${BOOTSTRAP_INDEX_ON_START:-0}
 INDEX_PROJECTS=${INDEX_PROJECTS:-tb,cervical_cancer}
 CHUNKING_STRATEGY=${CHUNKING_STRATEGY:-semantic}
 FORCE_RECHUNK=${FORCE_RECHUNK:-0}
+INDEX_REPLACE_EXISTING=${INDEX_REPLACE_EXISTING:-0}
 
 log() {
   echo "[$APP_NAME] $*"
@@ -64,7 +65,12 @@ index_projects() {
     fi
 
     log "Indexing project=$PROJECT_ID"
-    python scripts/embed_and_index.py --project "$PROJECT_ID" --resume
+    if [ "$INDEX_REPLACE_EXISTING" = "1" ]; then
+      log "Replace mode enabled for project=$PROJECT_ID (existing rows will be deleted before indexing)."
+      python scripts/embed_and_index.py --project "$PROJECT_ID" --replace-existing
+    else
+      python scripts/embed_and_index.py --project "$PROJECT_ID" --resume
+    fi
   done
   log "Indexing complete."
 }

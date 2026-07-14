@@ -55,6 +55,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Detect KB/indexing-related changes
+        id: kb_changes
+        if: ${{ github.event_name == 'push' }}
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            tb:
+              - 'knowledge_bases/tb/**'
+              - 'config/projects.yaml'
+              - 'scripts/chunk_markdown.py'
+              - 'scripts/embed_and_index.py'
+            cervical_cancer:
+              - 'knowledge_bases/cervical_cancer/**'
+              - 'config/projects.yaml'
+              - 'scripts/chunk_markdown.py'
+              - 'scripts/embed_and_index.py'
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -186,6 +203,51 @@ jobs:
             docker compose --env-file .env -f "$DEPLOY_COMPOSE_FILE" run --rm --pull always \
               -e INDEX_PROJECTS="$INDEX_PROJECTS" \
               -e FORCE_RECHUNK="$FORCE_RECHUNK" \
+              -e INDEX_REPLACE_EXISTING="0" \
+              -e CHUNKING_STRATEGY="$CHUNKING_STRATEGY" \
+              -e BATCH_SIZE="$BATCH_SIZE" \
+              helpcentre_indexer
+
+      - name: Auto reindex changed knowledge-base projects on push
+        if: ${{ github.event_name == 'push' }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          envs: DEPLOY_COMPOSE_FILE
+          command_timeout: 180m
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.VM_APP_PATH }}"
+
+            CHANGED_PROJECTS=""
+            if [[ "${{ steps.kb_changes.outputs.tb }}" == "true" ]]; then
+              CHANGED_PROJECTS="tb"
+            fi
+            if [[ "${{ steps.kb_changes.outputs.cervical_cancer }}" == "true" ]]; then
+              if [[ -n "$CHANGED_PROJECTS" ]]; then
+                CHANGED_PROJECTS="$CHANGED_PROJECTS,cervical_cancer"
+              else
+                CHANGED_PROJECTS="cervical_cancer"
+              fi
+            fi
+
+            if [[ -z "$CHANGED_PROJECTS" ]]; then
+              echo "No KB/indexing changes detected; skipping auto reindex."
+              exit 0
+            fi
+
+            CHUNKING_STRATEGY="$(grep -E '^CHUNKING_STRATEGY=' .env | tail -n 1 | cut -d= -f2- || true)"
+            CHUNKING_STRATEGY="${CHUNKING_STRATEGY:-recursive}"
+            BATCH_SIZE="$(grep -E '^BATCH_SIZE=' .env | tail -n 1 | cut -d= -f2- || true)"
+            BATCH_SIZE="${BATCH_SIZE:-64}"
+
+            echo "Auto reindexing changed projects: $CHANGED_PROJECTS"
+            docker compose --env-file .env -f "$DEPLOY_COMPOSE_FILE" run --rm --pull always \
+              -e INDEX_PROJECTS="$CHANGED_PROJECTS" \
+              -e FORCE_RECHUNK="1" \
+              -e INDEX_REPLACE_EXISTING="1" \
               -e CHUNKING_STRATEGY="$CHUNKING_STRATEGY" \
               -e BATCH_SIZE="$BATCH_SIZE" \
               helpcentre_indexer
@@ -222,6 +284,7 @@ jobs:
             docker compose --env-file .env -f "$DEPLOY_COMPOSE_FILE" run --rm --pull always \
               -e INDEX_PROJECTS="$INDEX_PROJECTS" \
               -e FORCE_RECHUNK="1" \
+              -e INDEX_REPLACE_EXISTING="1" \
               -e CHUNKING_STRATEGY="$CHUNKING_STRATEGY" \
               -e BATCH_SIZE="$BATCH_SIZE" \
               helpcentre_indexer

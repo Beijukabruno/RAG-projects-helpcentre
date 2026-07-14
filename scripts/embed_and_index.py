@@ -113,6 +113,25 @@ def _insert_embeddings(project_id: str, audience: str, entries: list[dict]) -> N
         db.commit()
 
 
+def _delete_project_audience_embeddings(project_id: str, audience: str) -> int:
+    with db_session_context() as db:
+        if db is None:
+            raise RuntimeError("Database is unavailable; cannot delete existing embeddings.")
+
+        deleted = db.execute(
+            sql_text(
+                """
+                DELETE FROM knowledge_chunk_embedding
+                WHERE project_id = :project_id
+                  AND audience = :audience
+                """
+            ),
+            {"project_id": project_id, "audience": audience},
+        )
+        db.commit()
+        return int(deleted.rowcount or 0)
+
+
 def index_audience_collection(
     audience: str,
     chunks_path: Path,
@@ -120,6 +139,7 @@ def index_audience_collection(
     project_id: str,
     *,
     resume: bool = False,
+    replace_existing: bool = False,
 ):
     from tqdm import tqdm
     if not chunks_path.exists():
@@ -153,8 +173,12 @@ def index_audience_collection(
             }
         )
 
+    if replace_existing:
+        deleted_rows = _delete_project_audience_embeddings(project_id, audience)
+        print(f"Replace mode: deleted {deleted_rows} existing rows for {project_id}/{audience}.")
+
     reused_count = 0
-    if resume and entries:
+    if resume and entries and not replace_existing:
         with db_session_context() as db:
             if db is None:
                 raise RuntimeError("Database is unavailable; cannot load existing embeddings.")
@@ -257,6 +281,11 @@ def main():
         action="store_true",
         help="Skip chunks that already have embeddings for the selected project/audience.",
     )
+    parser.add_argument(
+        "--replace-existing",
+        action="store_true",
+        help="Delete existing embeddings for each project/audience before indexing.",
+    )
     args = parser.parse_args()
 
     index_config = build_index_config(args.project)
@@ -274,6 +303,7 @@ def main():
             collection_name=cfg["collection_name"],
             project_id=args.project,
             resume=args.resume,
+            replace_existing=args.replace_existing,
         )
 
     print(f"All indexing complete for project '{args.project}'. Persisted in PostgreSQL pgvector.")
