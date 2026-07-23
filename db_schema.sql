@@ -169,10 +169,6 @@ CREATE TABLE IF NOT EXISTS knowledge_chunk_embedding (
 );
 
 CREATE INDEX IF NOT EXISTS idx_chat_session_project_audience ON chat_session(project_id, audience);
-CREATE INDEX IF NOT EXISTS idx_chat_session_client_session_id ON chat_session(client_session_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_session_project_audience_client
-ON chat_session(project_id, audience, client_session_id)
-WHERE client_session_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_chat_message_project_audience ON chat_message(project_id, audience);
 CREATE INDEX IF NOT EXISTS idx_chat_message_session ON chat_message(session_id);
 CREATE INDEX IF NOT EXISTS idx_chat_feedback_project_audience ON chat_feedback(project_id, audience);
