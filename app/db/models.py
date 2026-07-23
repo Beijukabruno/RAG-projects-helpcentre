@@ -155,6 +155,7 @@ class ChatSession(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id = Column(String(64), nullable=False, index=True)
     audience = Column(String(32), nullable=False, index=True)
+    client_session_id = Column(String(128), index=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     last_active = Column(DateTime, default=datetime.datetime.utcnow)
     messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan")

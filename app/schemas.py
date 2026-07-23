@@ -8,6 +8,10 @@ class ProjectScopedRatingRequest(BaseModel):
     rating: Annotated[int, Field(ge=1, le=5)]
     audience: str = Field("general", description="Audience for the feedback entry.")
     feedback: Optional[str] = Field(None, description="Optional free-text feedback.")
+    message_id: Optional[str] = Field(
+        None,
+        description="Optional chat message id to attach this feedback to a specific AI response.",
+    )
 
 
 class RatingRequest(BaseModel):
@@ -16,6 +20,10 @@ class RatingRequest(BaseModel):
     project_id: str = Field("tb", description="Project id from config/projects.yaml. Use project-specific routes instead.")
     audience: str = Field("general", description="Audience for the feedback entry.")
     feedback: Optional[str] = Field(None, description="Optional free-text feedback.")
+    message_id: Optional[str] = Field(
+        None,
+        description="Optional chat message id to attach this feedback to a specific AI response.",
+    )
 
 
 class ProjectScopedChatRequest(BaseModel):
@@ -44,6 +52,8 @@ class ChatResponse(BaseModel):
     answer: str
     sources: List[dict]
     llm_model: str
+    session_id: Optional[str] = None
+    message_id: Optional[str] = None
     toxicity_input: dict
     toxicity_output: Optional[Dict] = None
 

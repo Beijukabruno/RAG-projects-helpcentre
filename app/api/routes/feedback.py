@@ -20,6 +20,7 @@ async def tb_rate_service(rating_request: ProjectScopedRatingRequest):
         project_id="tb",
         audience=rating_request.audience,
         feedback_text=rating_request.feedback,
+        message_id=rating_request.message_id,
     )
     response = {"message": "Thank you for your feedback!", "rating": rating_request.rating, "stored": stored}
     if not stored:
@@ -39,6 +40,7 @@ async def cervical_cancer_rate_service(rating_request: ProjectScopedRatingReques
         project_id="cervical_cancer",
         audience=rating_request.audience,
         feedback_text=rating_request.feedback,
+        message_id=rating_request.message_id,
     )
     response = {"message": "Thank you for your feedback!", "rating": rating_request.rating, "stored": stored}
     if not stored:
@@ -58,6 +60,7 @@ async def maternal_health_rate_service(rating_request: ProjectScopedRatingReques
         project_id="maternal_health",
         audience=rating_request.audience,
         feedback_text=rating_request.feedback,
+        message_id=rating_request.message_id,
     )
     response = {"message": "Thank you for your feedback!", "rating": rating_request.rating, "stored": stored}
     if not stored:
@@ -77,6 +80,7 @@ async def rate_service(rating_request: RatingRequest):
         project_id=rating_request.project_id,
         audience=rating_request.audience,
         feedback_text=rating_request.feedback,
+        message_id=rating_request.message_id,
     )
     response = {"message": "Thank you for your feedback!", "rating": rating_request.rating, "stored": stored}
     if not stored:

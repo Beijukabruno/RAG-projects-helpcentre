@@ -41,6 +41,9 @@ def _apply_compatibility_migrations(connection) -> None:
         "ALTER TABLE projects ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP",
         "ALTER TABLE project_audiences ADD COLUMN IF NOT EXISTS enabled BOOLEAN NOT NULL DEFAULT TRUE",
         "ALTER TABLE project_audiences ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP",
+        "ALTER TABLE chat_session ADD COLUMN IF NOT EXISTS client_session_id VARCHAR(128)",
+        "CREATE INDEX IF NOT EXISTS idx_chat_session_client_session_id ON chat_session(client_session_id)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_session_project_audience_client ON chat_session(project_id, audience, client_session_id) WHERE client_session_id IS NOT NULL",
         """
         DO $$
         BEGIN

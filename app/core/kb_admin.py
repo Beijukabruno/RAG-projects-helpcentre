@@ -1,9 +1,8 @@
 import csv
 import hashlib
+import io
 import re
-import os
 import logging
-import requests
 from pathlib import Path
 from typing import Optional, List, Dict
 
@@ -15,7 +14,7 @@ from app.core.embeddings import embed_texts
 from app.core.project_manager import project_manager
 from app.db.session import db_session_context
 from app.db import admin_repo
-from scripts.chunk_markdown import chunk_markdown_file, load_md_sources
+from scripts.chunk_markdown import chunk_markdown_file, load_md_sources, _build_splitter
 
 logger = logging.getLogger(__name__)
 
@@ -340,6 +339,8 @@ async def activate_source(project_id: str, audience: str, asset_id: str) -> dict
             raise HTTPException(status_code=404, detail="Source asset not found")
         
         file_name = asset.source_file
+        if not file_name:
+            raise HTTPException(status_code=400, detail="Source asset has no source_file to activate")
         
     # Start Index Run
     run_id = admin_repo.create_index_run(
@@ -355,7 +356,11 @@ async def activate_source(project_id: str, audience: str, asset_id: str) -> dict
         csv_path = audience_dir / "sources.csv"
         file_path = audience_dir / "md" / file_name
         
-        chunks = chunk_markdown_file(file_path, load_md_sources(csv_path), strategy="recursive")
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail=f"Markdown file not found for activation: {file_name}")
+
+        text_splitter = _build_splitter("recursive")
+        chunks = chunk_markdown_file(file_path, load_md_sources(csv_path), text_splitter)
         chunk_count = _index_chunks(project_id, audience, file_name, chunks, index_run_id=run_id)
         
         admin_repo.update_index_run(run_id, "completed", chunk_count=chunk_count, finished=True)
@@ -367,14 +372,15 @@ async def activate_source(project_id: str, audience: str, asset_id: str) -> dict
             db.commit()
             
         # Verify retrieval
-        from app.retrieval.semantic_search import semantic_search
-        search_results = semantic_search(
+        from app.retrieval.semantic_search import search
+
+        search_results = search(
             query="Verify index presence",
+            k=1,
             project_id=project_id,
             audience=audience,
-            limit=1
         )
-        retrieval_ok = len(search_results) > 0
+        retrieval_ok = len(search_results.get("ids", [[]])[0]) > 0
             
         return {
             "asset_id": asset_id,

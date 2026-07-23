@@ -7,25 +7,50 @@ integrations should use the project-specific routes.
 """
 
 import logging
+import re
+import uuid
 from time import perf_counter
 from typing import Union
 
 from fastapi import APIRouter, HTTPException
 
-from app.core.chat_history import InMemoryChatMessageHistory, SessionChatHistoryStore
+from app.core.chat_history import InMemoryChatMessageHistory
 from app.core.config import PERF_DEBUG, normalize_audience
 from app.core.guardrails import guard_input, guard_output
 from app.core.llm import GeminiAPIError, call_gemma_model
 from app.core.prompts import build_prompt_with_history
 from app.core.project_manager import project_manager
-from app.db.persistence import persist_chat_exchange
+from app.db.persistence import get_recent_session_messages, persist_chat_exchange
 from app.retrieval.semantic_search import search
 from app.schemas import ChatRequest, ProjectScopedChatRequest, ChatResponse
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-chat_history_store = SessionChatHistoryStore()
+
+_FOLLOW_UP_PRONOUNS = re.compile(r"\b(it|its|they|them|that|this|those|these|he|she|his|her)\b", re.IGNORECASE)
+
+
+def _build_retrieval_query(user_query: str, history: InMemoryChatMessageHistory) -> str:
+    query = (user_query or "").strip()
+    if not query:
+        return query
+
+    tokens = query.split()
+    ambiguous_followup = len(tokens) <= 8 and bool(_FOLLOW_UP_PRONOUNS.search(query))
+    if not ambiguous_followup:
+        return query
+
+    last_user_message = ""
+    for msg in reversed(history.messages):
+        if msg.type == "human" and msg.content and msg.content.strip() and msg.content.strip() != query:
+            last_user_message = msg.content.strip()
+            break
+
+    if not last_user_message:
+        return query
+
+    return f"{last_user_message}\nFollow-up: {query}"
 
 
 # ============================================================================
@@ -98,9 +123,19 @@ def _chat_for_audience(req: Union[ChatRequest, ProjectScopedChatRequest], audien
     audience = normalize_audience(audience, project_id=project_id)
     project_manager.get_project(project_id)
     guardrails_enabled = project_manager.get_feature_flag(project_id, "guardrails_enabled", default=True)
-    session_id = getattr(req, "session_id", None)
-    # Only reuse history when client explicitly provides a stable session_id.
-    history = chat_history_store.get(f"{project_id}:{audience}:{session_id}") if session_id else InMemoryChatMessageHistory()
+    requested_session_id = getattr(req, "session_id", None)
+    session_id = requested_session_id or str(uuid.uuid4())
+    history = InMemoryChatMessageHistory()
+    for item in get_recent_session_messages(
+        project_id=project_id,
+        audience=audience,
+        client_session_id=session_id,
+        limit_messages=6,
+    ):
+        if item.get("is_user"):
+            history.add_user_message(item.get("message", ""))
+        else:
+            history.add_ai_message(item.get("message", ""))
 
     t_guard_in0 = perf_counter()
     proceed_in, label_in, score_in, safe_resp_in = guard_input(req.query, enabled=guardrails_enabled)
@@ -109,13 +144,14 @@ def _chat_for_audience(req: Union[ChatRequest, ProjectScopedChatRequest], audien
         history.add_user_message(req.query)
         history.add_ai_message(safe_resp_in)
         t_persist0 = perf_counter()
-        persist_chat_exchange(
+        persisted = persist_chat_exchange(
             user_message=req.query,
             ai_message=safe_resp_in,
             project_id=project_id,
             audience=audience,
             llm_model="guardrail",
             toxicity_input={"label": label_in, "score": score_in},
+            client_session_id=session_id,
         )
         t_persist1 = perf_counter()
         if PERF_DEBUG:
@@ -132,13 +168,16 @@ def _chat_for_audience(req: Union[ChatRequest, ProjectScopedChatRequest], audien
             answer=safe_resp_in,
             sources=[],
             llm_model="guardrail",
+            session_id=(persisted or {}).get("client_session_id", session_id),
+            message_id=(persisted or {}).get("ai_message_id"),
             toxicity_input={"label": label_in, "score": score_in},
             toxicity_output=None,
         )
 
     try:
         t_retrieval0 = perf_counter()
-        results = search(req.query, k=req.k, audience=audience, project_id=project_id)
+        retrieval_query = _build_retrieval_query(req.query, history)
+        results = search(retrieval_query, k=req.k, audience=audience, project_id=project_id)
         t_retrieval1 = perf_counter()
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Semantic search failed: {exc}") from exc
@@ -150,13 +189,14 @@ def _chat_for_audience(req: Union[ChatRequest, ProjectScopedChatRequest], audien
         history.add_user_message(req.query)
         history.add_ai_message(fallback_msg)
         t_persist0 = perf_counter()
-        persist_chat_exchange(
+        persisted = persist_chat_exchange(
             user_message=req.query,
             ai_message=fallback_msg,
             project_id=project_id,
             audience=audience,
             llm_model="none",
             toxicity_input={"label": label_in, "score": score_in},
+            client_session_id=session_id,
         )
         t_persist1 = perf_counter()
         if PERF_DEBUG:
@@ -174,6 +214,8 @@ def _chat_for_audience(req: Union[ChatRequest, ProjectScopedChatRequest], audien
             answer=fallback_msg,
             sources=[],
             llm_model="none",
+            session_id=(persisted or {}).get("client_session_id", session_id),
+            message_id=(persisted or {}).get("ai_message_id"),
             toxicity_input={"label": label_in, "score": score_in},
             toxicity_output=None,
         )
@@ -189,23 +231,25 @@ def _chat_for_audience(req: Union[ChatRequest, ProjectScopedChatRequest], audien
         gen = call_gemma_model(prompt, model_name=llm_model_name)
         t_llm1 = perf_counter()
     except GeminiAPIError as exc:
-        persist_chat_exchange(
+        persisted = persist_chat_exchange(
             user_message=req.query,
             ai_message=f"LLM provider unavailable: {exc}",
             llm_prompt=prompt,
             project_id=project_id,
             audience=audience,
             llm_model=project_id,
+            client_session_id=session_id,
         )
         raise HTTPException(status_code=exc.status_code, detail=f"LLM provider unavailable: {exc}") from exc
     except Exception as exc:
-        persist_chat_exchange(
+        persisted = persist_chat_exchange(
             user_message=req.query,
             ai_message=f"LLM call failed: {exc}",
             llm_prompt=prompt,
             project_id=project_id,
             audience=audience,
             llm_model=project_id,
+            client_session_id=session_id,
         )
         raise HTTPException(status_code=500, detail=f"LLM call failed: {exc}") from exc
 
@@ -216,7 +260,7 @@ def _chat_for_audience(req: Union[ChatRequest, ProjectScopedChatRequest], audien
         history.add_user_message(req.query)
         history.add_ai_message(safe_resp_out)
         t_persist0 = perf_counter()
-        persist_chat_exchange(
+        persisted = persist_chat_exchange(
             user_message=req.query,
             ai_message=safe_resp_out,
             llm_prompt=prompt,
@@ -225,6 +269,7 @@ def _chat_for_audience(req: Union[ChatRequest, ProjectScopedChatRequest], audien
             llm_model=gen.get("llm_model"),
             toxicity_input={"label": label_in, "score": score_in},
             toxicity_output={"label": label_out, "score": score_out},
+            client_session_id=session_id,
         )
         t_persist1 = perf_counter()
         if PERF_DEBUG:
@@ -245,6 +290,8 @@ def _chat_for_audience(req: Union[ChatRequest, ProjectScopedChatRequest], audien
             answer=safe_resp_out,
             sources=[],
             llm_model=gen.get("llm_model"),
+            session_id=(persisted or {}).get("client_session_id", session_id),
+            message_id=(persisted or {}).get("ai_message_id"),
             toxicity_input={"label": label_in, "score": score_in},
             toxicity_output={"label": label_out, "score": score_out},
         )
@@ -267,7 +314,7 @@ def _chat_for_audience(req: Union[ChatRequest, ProjectScopedChatRequest], audien
     history.add_user_message(req.query)
     history.add_ai_message(answer)
     t_persist0 = perf_counter()
-    persist_chat_exchange(
+    persisted = persist_chat_exchange(
         user_message=req.query,
         ai_message=answer,
         llm_prompt=prompt,
@@ -278,6 +325,7 @@ def _chat_for_audience(req: Union[ChatRequest, ProjectScopedChatRequest], audien
         sources=sources,
         toxicity_input={"label": label_in, "score": score_in},
         toxicity_output={"label": label_out, "score": score_out},
+        client_session_id=session_id,
     )
     t_persist1 = perf_counter()
 
@@ -300,6 +348,8 @@ def _chat_for_audience(req: Union[ChatRequest, ProjectScopedChatRequest], audien
         answer=answer,
         sources=sources,
         llm_model=gen.get("llm_model"),
+        session_id=(persisted or {}).get("client_session_id", session_id),
+        message_id=(persisted or {}).get("ai_message_id"),
         toxicity_input={"label": label_in, "score": score_in},
         toxicity_output={"label": label_out, "score": score_out},
     )

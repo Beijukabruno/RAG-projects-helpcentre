@@ -1,5 +1,6 @@
 import datetime
 import logging
+import uuid
 
 from app.db.models import ChatFeedback, ChatMessage, ChatSession
 from app.db.session import db_session_context
@@ -8,15 +9,18 @@ from app.db.session import db_session_context
 logger = logging.getLogger(__name__)
 
 
-def _get_or_create_latest_session(db, project_id: str, audience: str):
+def _get_or_create_session(db, project_id: str, audience: str, client_session_id: str):
     session_obj = (
         db.query(ChatSession)
-        .filter_by(project_id=project_id, audience=audience)
-        .order_by(ChatSession.created_at.desc())
+        .filter_by(project_id=project_id, audience=audience, client_session_id=client_session_id)
         .first()
     )
     if not session_obj:
-        session_obj = ChatSession(project_id=project_id, audience=audience)
+        session_obj = ChatSession(
+            project_id=project_id,
+            audience=audience,
+            client_session_id=client_session_id,
+        )
         db.add(session_obj)
         db.commit()
         db.refresh(session_obj)
@@ -27,21 +31,96 @@ def _get_or_create_latest_session(db, project_id: str, audience: str):
     return session_obj
 
 
-def persist_feedback(rating: int, *, project_id: str = "tb", audience: str = "general", feedback_text: str | None = None) -> bool:
+def get_recent_session_messages(
+    *,
+    project_id: str,
+    audience: str,
+    client_session_id: str,
+    limit_messages: int = 6,
+) -> list[dict]:
+    try:
+        with db_session_context() as db:
+            if db is None:
+                return []
+
+            rows = (
+                db.query(ChatMessage)
+                .join(ChatSession, ChatMessage.session_id == ChatSession.id)
+                .filter(
+                    ChatMessage.project_id == project_id,
+                    ChatMessage.audience == audience,
+                    ChatSession.client_session_id == client_session_id,
+                )
+                .order_by(ChatMessage.created_at.desc())
+                .limit(limit_messages)
+                .all()
+            )
+
+            rows.reverse()
+            return [
+                {
+                    "is_user": bool(row.is_user),
+                    "message": row.message,
+                }
+                for row in rows
+                if row.message
+            ]
+    except Exception:
+        logger.exception("Failed to fetch recent session messages.")
+        return []
+
+
+def persist_feedback(
+    rating: int,
+    *,
+    project_id: str = "tb",
+    audience: str = "general",
+    feedback_text: str | None = None,
+    message_id: str | None = None,
+) -> bool:
     try:
         with db_session_context() as db:
             if db is None:
                 logger.warning("Skipping feedback persistence because the database is unavailable.")
                 return False
 
-            last_ai_msg = (
-                db.query(ChatMessage)
-                .filter_by(project_id=project_id, audience=audience, is_user=False)
-                .order_by(ChatMessage.created_at.desc())
-                .first()
-            )
+            target_ai_msg = None
+            if message_id:
+                try:
+                    msg_uuid = uuid.UUID(str(message_id))
+                except ValueError:
+                    logger.warning("Invalid message_id provided for feedback: %s", message_id)
+                    return False
+
+                target_ai_msg = (
+                    db.query(ChatMessage)
+                    .filter_by(
+                        id=msg_uuid,
+                        project_id=project_id,
+                        audience=audience,
+                        is_user=False,
+                    )
+                    .first()
+                )
+                if not target_ai_msg:
+                    logger.warning(
+                        "Feedback message_id not found for project=%s audience=%s message_id=%s",
+                        project_id,
+                        audience,
+                        message_id,
+                    )
+                    return False
+            else:
+                # Backward compatibility fallback for older clients.
+                target_ai_msg = (
+                    db.query(ChatMessage)
+                    .filter_by(project_id=project_id, audience=audience, is_user=False)
+                    .order_by(ChatMessage.created_at.desc())
+                    .first()
+                )
+
             feedback = ChatFeedback(
-                message_id=last_ai_msg.id if last_ai_msg else None,
+                message_id=target_ai_msg.id if target_ai_msg else None,
                 project_id=project_id,
                 audience=audience,
                 rating=rating,
@@ -67,14 +146,21 @@ def persist_chat_exchange(
     sources: list | None = None,
     toxicity_input: dict | None = None,
     toxicity_output: dict | None = None,
-) -> bool:
+    client_session_id: str | None = None,
+) -> dict | None:
     try:
         with db_session_context() as db:
             if db is None:
                 logger.warning("Skipping chat persistence because the database is unavailable.")
-                return False
+                return None
 
-            session_obj = _get_or_create_latest_session(db, project_id=project_id, audience=audience)
+            effective_client_session_id = client_session_id or str(uuid.uuid4())
+            session_obj = _get_or_create_session(
+                db,
+                project_id=project_id,
+                audience=audience,
+                client_session_id=effective_client_session_id,
+            )
             user_msg = ChatMessage(
                 session_id=session_obj.id,
                 project_id=project_id,
@@ -98,10 +184,17 @@ def persist_chat_exchange(
             )
             db.add_all([user_msg, ai_msg])
             db.commit()
-            return True
+            db.refresh(user_msg)
+            db.refresh(ai_msg)
+            return {
+                "session_id": str(session_obj.id),
+                "client_session_id": effective_client_session_id,
+                "user_message_id": str(user_msg.id),
+                "ai_message_id": str(ai_msg.id),
+            }
     except Exception:
         logger.exception("Chat persistence failed.")
-        return False
+        return None
 
 
 def get_last_records(limit: int = 100) -> list[dict]:
