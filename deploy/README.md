@@ -64,6 +64,20 @@ indexer after the API is already deployed and healthy. Use `index_projects` to
 limit the job to a subset such as `tb`, and use `force_rechunk=true` only when
 the markdown sources changed and chunk JSON files must be rebuilt.
 
+On every push to `main`, the deployment workflow now performs a forced
+reindex by default for changed projects so the pgvector table stays aligned with
+the latest chunking and retrieval logic. If you need to rebuild manually on the
+VM, run:
+
+```bash
+docker compose --env-file .env -f deploy/docker/docker-compose.yml run --rm \
+  -e INDEX_PROJECTS=tb,cervical_cancer \
+  -e FORCE_RECHUNK=1 \
+  -e INDEX_REPLACE_EXISTING=1 \
+  -e CHUNKING_STRATEGY=recursive \
+  helpcentre_indexer
+```
+
 By default, the indexer uses existing generated chunk files in the image and
 only creates missing chunk files. This avoids semantic chunking API calls during
 routine deploys. The embedding step runs with resume enabled, skipping

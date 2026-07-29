@@ -26,6 +26,33 @@ HYBRID_WEIGHT_VECTOR = float(os.getenv("HYBRID_WEIGHT_VECTOR", "1.0"))
 HYBRID_WEIGHT_KEYWORD = float(os.getenv("HYBRID_WEIGHT_KEYWORD", "1.0"))
 
 _QUERY_TOKEN = re.compile(r"[a-z0-9]{3,}")
+_FOLLOW_UP_PRONOUNS = re.compile(r"\b(it|its|they|them|that|this|those|these|he|she|his|her)\b", re.IGNORECASE)
+
+
+def build_retrieval_query(user_query: str, history=None) -> str:
+    query = (user_query or "").strip()
+    if not query:
+        return query
+
+    tokens = query.split()
+    ambiguous_followup = len(tokens) <= 8 and bool(_FOLLOW_UP_PRONOUNS.search(query))
+    if ambiguous_followup and history is not None:
+        last_user_message = ""
+        for msg in reversed(getattr(history, "messages", [])):
+            if getattr(msg, "type", "") == "human" and getattr(msg, "content", "") and getattr(msg, "content", "").strip() and getattr(msg, "content", "").strip() != query:
+                last_user_message = getattr(msg, "content", "").strip()
+                break
+
+        if last_user_message:
+            query = f"{last_user_message}\nFollow-up: {query}"
+
+    lowered = query.lower()
+    if re.search(r"\b(register|registered|registration|add|create|enroll)\b", lowered) and re.search(r"\b(patient|client|person|user)\b", lowered):
+        expansions = [query, f"{query} register", f"{query} add", f"{query} enroll", f"{query} create"]
+        return " ".join(dict.fromkeys(expansions))
+
+    return query
+
 
 def _vector_to_pg_literal(vector):
     return "[" + ",".join(f"{float(v):.8f}" for v in vector) + "]"

@@ -21,36 +21,15 @@ from app.core.llm import GeminiAPIError, call_gemma_model
 from app.core.prompts import build_prompt_with_history
 from app.core.project_manager import project_manager
 from app.db.persistence import get_recent_session_messages, persist_chat_exchange
-from app.retrieval.semantic_search import search
+from app.retrieval.semantic_search import build_retrieval_query, search
 from app.schemas import ChatRequest, ProjectScopedChatRequest, ChatResponse
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-_FOLLOW_UP_PRONOUNS = re.compile(r"\b(it|its|they|them|that|this|those|these|he|she|his|her)\b", re.IGNORECASE)
-
-
 def _build_retrieval_query(user_query: str, history: InMemoryChatMessageHistory) -> str:
-    query = (user_query or "").strip()
-    if not query:
-        return query
-
-    tokens = query.split()
-    ambiguous_followup = len(tokens) <= 8 and bool(_FOLLOW_UP_PRONOUNS.search(query))
-    if not ambiguous_followup:
-        return query
-
-    last_user_message = ""
-    for msg in reversed(history.messages):
-        if msg.type == "human" and msg.content and msg.content.strip() and msg.content.strip() != query:
-            last_user_message = msg.content.strip()
-            break
-
-    if not last_user_message:
-        return query
-
-    return f"{last_user_message}\nFollow-up: {query}"
+    return build_retrieval_query(user_query, history=history)
 
 
 # ============================================================================

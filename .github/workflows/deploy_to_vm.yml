@@ -266,7 +266,7 @@ jobs:
             cd "${{ secrets.VM_APP_PATH }}"
 
             FORCE_REINDEX_ON_DEPLOY="$(grep -E '^FORCE_REINDEX_ON_DEPLOY=' .env | tail -n 1 | cut -d= -f2- || true)"
-            FORCE_REINDEX_ON_DEPLOY="${FORCE_REINDEX_ON_DEPLOY:-0}"
+            FORCE_REINDEX_ON_DEPLOY="${FORCE_REINDEX_ON_DEPLOY:-1}"
 
             if [[ "$FORCE_REINDEX_ON_DEPLOY" != "1" ]]; then
               echo "FORCE_REINDEX_ON_DEPLOY != 1, skipping one-time forced reindex."
