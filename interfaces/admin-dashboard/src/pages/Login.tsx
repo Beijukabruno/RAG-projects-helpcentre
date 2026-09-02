@@ -1,22 +1,16 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const { loginWithKeycloak } = useAuth();
   const [error, setError] = useState('');
-  const { login } = useAuth();
-  const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleKeycloakLogin = async () => {
     setError('');
     try {
-      await login(email, password);
-      navigate('/');
+      await loginWithKeycloak();
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Login failed. Please check your credentials.');
+      setError(err.message || 'Unable to start the Keycloak sign-in flow.');
     }
   };
 
@@ -24,35 +18,12 @@ const Login = () => {
     <div className="login-container">
       <div className="login-card">
         <h1>Help Centre Admin</h1>
-        <p>Sign in to manage your medical chatbot projects.</p>
-        
+        <p>Use your authorised Keycloak account to access the admin console.</p>
+        <p className="helper-text">You will be redirected to the Keycloak sign-in page, where you enter your work email and password. This app does not collect those credentials directly.</p>
+
         {error && <div className="error-message">{error}</div>}
-        
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="email">Email Address</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="helpcentre_admin@gmail.com"
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
-          </div>
-          <button type="submit" className="login-button">Sign In</button>
-        </form>
+
+        <button type="button" className="login-button" onClick={handleKeycloakLogin}>Continue with Keycloak</button>
       </div>
       
       <style>{`
@@ -130,6 +101,18 @@ const Login = () => {
           font-size: 0.85rem;
           text-align: center;
           border: 1px solid #fecaca;
+        }
+        .helper-text {
+          font-size: 0.9rem;
+          color: #64748b;
+          margin-bottom: 1.25rem;
+          line-height: 1.5;
+        }
+        .divider {
+          text-align: center;
+          color: #64748b;
+          margin: 1rem 0;
+          font-size: 0.85rem;
         }
       `}</style>
     </div>

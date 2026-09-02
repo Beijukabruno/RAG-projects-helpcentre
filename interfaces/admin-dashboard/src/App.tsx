@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
+import Callback from './pages/Callback';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
 import Users from './pages/Users';
@@ -25,6 +26,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/callback" element={<Callback />} />
           <Route path="/" element={
             <ProtectedRoute>
               <Layout />

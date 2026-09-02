@@ -3,6 +3,7 @@ import io
 import uuid
 from typing import Any
 
+import jwt
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -16,6 +17,13 @@ from app.core.auth import (
     require_project_action,
     require_project_admin,
     require_super_admin,
+)
+from app.core.keycloak_auth import (
+    exchange_code_for_token,
+    get_keycloak_authorization_url,
+    get_keycloak_claims_from_token,
+    get_keycloak_settings,
+    map_keycloak_claims_to_app_context,
 )
 from app.core.config import ROLE_PROJECT_ADMIN, ROLE_SUPER_ADMIN
 from app.core.kb_admin import (
@@ -38,6 +46,11 @@ router = APIRouter(prefix="/admin", tags=["Admin"])
 class LoginRequest(BaseModel):
     email: str = Field(min_length=3, max_length=255)
     password: str = Field(min_length=1)
+
+
+class KeycloakCallbackRequest(BaseModel):
+    code: str
+    redirect_uri: str | None = None
 
 
 class UserCreate(BaseModel):
@@ -133,6 +146,29 @@ def login(payload: LoginRequest):
 @router.get("/auth/me", tags=["Admin: Auth"])
 def me(current_user: dict = Depends(get_current_user)):
     return current_user
+
+
+@router.get("/auth/keycloak/login", tags=["Admin: Auth"])
+def keycloak_login(redirect_uri: str | None = None):
+    settings = get_keycloak_settings()
+    callback_uri = redirect_uri or settings.get("redirect_uri") or "http://localhost:3000/callback"
+    return {"url": get_keycloak_authorization_url(callback_uri)}
+
+
+@router.post("/auth/keycloak/callback", tags=["Admin: Auth"])
+def keycloak_callback(payload: KeycloakCallbackRequest):
+    if not payload.code:
+        raise HTTPException(status_code=400, detail="Missing auth code.")
+
+    callback_uri = payload.redirect_uri or get_keycloak_settings().get("redirect_uri") or "http://localhost:3000/callback"
+    token_response = exchange_code_for_token(payload.code, callback_uri)
+    access_token = token_response.get("access_token")
+    if not access_token:
+        raise HTTPException(status_code=400, detail="Failed to obtain access token from Keycloak.")
+
+    claims = get_keycloak_claims_from_token(access_token)
+    user_context = map_keycloak_claims_to_app_context(claims)
+    return {"access_token": access_token, "token_type": "bearer", "user": user_context}
 
 
 @router.post("/users", dependencies=[Depends(require_global_action("users.manage"))], tags=["Admin: Users"])

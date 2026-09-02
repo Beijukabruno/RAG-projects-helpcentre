@@ -15,6 +15,7 @@ from app.core.config import (
 )
 from app.db import admin_repo
 from app.db.admin_repo import DatabaseUnavailable
+from app.core.keycloak_auth import get_user_context_from_token
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/admin/auth/login")
@@ -97,11 +98,15 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
         detail="Could not validate credentials.",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         user_id = uuid.UUID(str(payload.get("sub")))
-    except Exception as exc:
-        raise credentials_error from exc
+    except Exception:
+        keycloak_user = get_user_context_from_token(token)
+        if not keycloak_user:
+            raise credentials_error
+        return _with_permissions(keycloak_user)
 
     try:
         user = admin_repo.get_user_auth_context(user_id)

@@ -13,6 +13,8 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, pass: string) => Promise<{ access_token: string; token_type: string; user: User }>;
+  loginWithKeycloak: () => Promise<void>;
+  completeLogin: (data: { access_token: string; token_type: string; user: User }) => void;
   logout: () => void;
 }
 
@@ -43,12 +45,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const persistAuth = (accessToken: string, userData: User) => {
+    localStorage.setItem('admin_token', accessToken);
+    setUser(userData);
+  };
+
   const login = async (email: string, pass: string) => {
     const resp = await api.post('/admin/auth/login', { email, password: pass });
     const { access_token, user } = resp.data;
-    localStorage.setItem('admin_token', access_token);
-    setUser(user);
+    persistAuth(access_token, user);
     return resp.data;
+  };
+
+  const loginWithKeycloak = async () => {
+    const redirectUri = `${window.location.origin}/callback`;
+    const resp = await api.get(`/admin/auth/keycloak/login?redirect_uri=${encodeURIComponent(redirectUri)}`);
+    if (!resp.data?.url) {
+      throw new Error('Keycloak login URL was not returned by the backend.');
+    }
+    window.location.assign(resp.data.url);
+  };
+
+  const completeLogin = (data: { access_token: string; token_type: string; user: User }) => {
+    persistAuth(data.access_token, data.user);
   };
 
   const logout = () => {
@@ -57,7 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithKeycloak, completeLogin, logout }}>
       {children}
     </AuthContext.Provider>
   );
